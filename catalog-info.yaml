@@ -1,0 +1,9 @@
+apiVersion: backstage.io/v1alpha1
+kind: Location
+metadata:
+  name: hello-world-caixa-aap-template
+  description: Template Backstage para executar automação Hello World Caixa no AAP
+spec:
+  type: url
+  targets:
+    - ./template.yaml

@@ -1,0 +1,109 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: hello-world-caixa-aap
+  title: Hello World Caixa
+  description: Executa a automação Hello World Caixa no Ansible Automation Platform
+  tags:
+    - ansible
+    - aap
+    - automation
+    - caixa
+  annotations:
+    backstage.io/techdocs-ref: dir:.
+  links:
+    - title: Ansible Automation Platform
+      url: https://aap-hub-aap.apps.cluster-bxnhf.dyn.redhatworkshops.io/
+      icon: dashboard
+spec:
+  type: automation
+  owner: team-caixa
+  lifecycle: production
+
+  parameters:
+    - title: Informações do Job Template
+      description: >
+        Este template executa o playbook **linux_playbook.yml** no Ansible Automation Platform
+        utilizando o Job Template "Hello World Caixa".
+      required: []
+      properties:
+        inventory:
+          title: Inventário
+          type: string
+          description: Inventário a ser utilizado na execução
+          default: Demo Inventory
+          enum:
+            - Demo Inventory
+          ui:widget: select
+
+        verbosity:
+          title: Verbosidade
+          type: number
+          description: Nível de verbosidade da execução
+          default: 0
+          enum:
+            - 0
+            - 1
+            - 2
+            - 3
+            - 4
+          enumNames:
+            - "0 (Normal)"
+            - "1 (Verbose)"
+            - "2 (More Verbose)"
+            - "3 (Debug)"
+            - "4 (Connection Debug)"
+          ui:widget: select
+
+        extraVariables:
+          title: Variáveis Extra
+          type: string
+          description: >
+            Variáveis extras em formato YAML para passar ao playbook (opcional).
+            Exemplo: key: value
+          ui:widget: textarea
+          ui:options:
+            rows: 5
+
+    - title: Confirmação
+      description: Revise os dados antes de executar a automação.
+      properties:
+        confirmExecution:
+          title: Confirmo que desejo executar esta automação
+          type: boolean
+          default: false
+          ui:widget: checkbox
+      required:
+        - confirmExecution
+
+  steps:
+    - id: launch-job-template
+      name: Executar Job Template no AAP
+      action: aap:job-template:launch
+      input:
+        host: ${{ parameters.aapHost | default("https://aap.example.com") }}
+        jobTemplateId: "Hello World Caixa"
+        inventory: ${{ parameters.inventory }}
+        extraVars: ${{ parameters.extraVariables }}
+        values:
+          verbosity: ${{ parameters.verbosity }}
+
+    - id: log-output
+      name: Registrar resultado da execução
+      action: debug:log
+      input:
+        message: >
+          Job Template "Hello World Caixa" executado com sucesso!
+          Job ID: ${{ steps['launch-job-template'].output.jobId }}
+          Status: ${{ steps['launch-job-template'].output.status }}
+
+  output:
+    links:
+      - title: Ver execução no AAP
+        url: ${{ steps['launch-job-template'].output.jobUrl }}
+        icon: dashboard
+    text:
+      - title: ID do Job
+        content: ${{ steps['launch-job-template'].output.jobId }}
+      - title: Status
+        content: ${{ steps['launch-job-template'].output.status }}
