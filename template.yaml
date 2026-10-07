@@ -9,6 +9,9 @@ metadata:
     - aap
     - automation
     - caixa
+    - v0.0.1
+  labels:
+    version: 0.0.1
   annotations:
     backstage.io/techdocs-ref: dir:.
   links:
@@ -21,20 +24,43 @@ spec:
   lifecycle: production
 
   parameters:
-    - title: Informações do Job Template
-      description: >
-        Este template executa o playbook **linux_playbook.yml** no Ansible Automation Platform
-        utilizando o Job Template "Hello World Caixa".
-      required: []
+    - title: Conexão com o AAP
+      description: Forneça o token de acesso ao Ansible Automation Platform.
+      required:
+        - aapToken
       properties:
+        aapToken:
+          title: Token do AAP
+          type: string
+          description: Token de autenticação para o Ansible Automation Platform
+          ui:field: AAPTokenField
+
+    - title: Configuração do Job Template
+      description: >
+        Este template executa o playbook **linux_playbook.yml** no AAP
+        utilizando o Job Template "Hello World Caixa" da organização CAIXA.
+      required:
+        - jobTemplate
+      properties:
+        jobTemplate:
+          title: Job Template
+          type: string
+          description: Selecione o Job Template a ser executado no AAP
+          default: Hello World Caixa
+          ui:field: AAPResourcePicker
+          ui:options:
+            resourceType: job_template
+            organization: CAIXA
+
         inventory:
           title: Inventário
           type: string
           description: Inventário a ser utilizado na execução
           default: Demo Inventory
-          enum:
-            - Demo Inventory
-          ui:widget: select
+          ui:field: AAPResourcePicker
+          ui:options:
+            resourceType: inventory
+            organization: CAIXA
 
         verbosity:
           title: Verbosidade
@@ -79,14 +105,14 @@ spec:
   steps:
     - id: launch-job-template
       name: Executar Job Template no AAP
-      action: aap:job-template:launch
+      action: ansible:jobTemplate:launch
       input:
-        host: ${{ parameters.aapHost | default("https://aap.example.com") }}
-        jobTemplateId: "Hello World Caixa"
+        jobTemplate: ${{ parameters.jobTemplate }}
         inventory: ${{ parameters.inventory }}
         extraVars: ${{ parameters.extraVariables }}
-        values:
-          verbosity: ${{ parameters.verbosity }}
+        verbosity: ${{ parameters.verbosity }}
+        connectionDetails:
+          token: ${{ parameters.aapToken }}
 
     - id: log-output
       name: Registrar resultado da execução

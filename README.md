@@ -1,6 +1,6 @@
 # Hello World Caixa — Backstage + Ansible Automation Platform
 
-Template do Backstage para disparar o Job Template **Hello World Caixa** no Ansible Automation Platform (AAP).
+Template do Backstage (RHDH) para disparar o Job Template **Hello World Caixa** no Ansible Automation Platform (AAP), utilizando os plugins oficiais da Red Hat.
 
 ## Dados do Job Template no AAP
 
@@ -20,21 +20,106 @@ Template do Backstage para disparar o Job Template **Hello World Caixa** no Ansi
 | **Show changes**        | Off                            |
 | **Job slicing**         | 1                              |
 
-## Pré-requisitos
+## Plugins utilizados
 
-1. **Backstage** com o plugin [`@janus-idp/backstage-scaffolder-backend-module-aap`](https://github.com/janus-idp/backstage-plugins/tree/main/plugins/aap-backend) instalado e configurado.
+Este template utiliza os plugins oficiais do **Red Hat Ansible Automation Platform** para o RHDH:
 
-2. **Ansible Automation Platform** acessível pelo Backstage com credenciais configuradas no `app-config.yaml`:
+| Plugin | Tipo | Função |
+|--------|------|--------|
+| `ansible-plugin-backstage-rhaap` | Frontend | Página "Ansible" no menu do Backstage |
+| `ansible-plugin-backstage-self-service` | Frontend | Campos `AAPTokenField` e `AAPResourcePicker` no scaffolder |
+| `ansible-backstage-plugin-catalog-backend-module-rhaap` | Backend | Sincroniza orgs, usuários, teams e job templates do AAP |
+| `ansible-plugin-scaffolder-backend-module-backstage-rhaap` | Backend | Ação `ansible:jobTemplate:launch` no scaffolder |
 
-   ```yaml
-   aap:
-     baseUrl: https://aap.example.com
-     authorization: "Bearer <token>"
-   ```
+### Configuração dos plugins (dynamic plugins)
 
-3. O Job Template **Hello World Caixa** deve existir no AAP.
+```yaml
+dynamicPlugins:
+  - disabled: false
+    package: >-
+      oci://registry.redhat.io/ansible-automation-platform/automation-portal:2.2!ansible-plugin-backstage-rhaap
+    pluginConfig:
+      dynamicPlugins:
+        frontend:
+          ansible.plugin-backstage-rhaap:
+            appIcons:
+              - importName: AnsibleLogo
+                name: AnsibleLogo
+            dynamicRoutes:
+              - importName: AnsiblePage
+                menuItem:
+                  icon: AnsibleLogo
+                  text: Ansible
+                path: /ansible
 
-## Como registrar no Backstage
+  - disabled: false
+    package: >-
+      oci://registry.redhat.io/ansible-automation-platform/automation-portal:2.2!ansible-plugin-backstage-self-service
+    pluginConfig:
+      dynamicPlugins:
+        frontend:
+          ansible.plugin-backstage-self-service:
+            scaffolderFieldExtensions:
+              - importName: AAPTokenFieldExtension
+              - importName: AAPResourcePickerExtension
+
+  - disabled: false
+    package: >-
+      oci://registry.redhat.io/ansible-automation-platform/automation-portal:2.2!ansible-backstage-plugin-catalog-backend-module-rhaap
+    pluginConfig:
+      catalog:
+        providers:
+          rhaap:
+            development:
+              orgs: "Default,CAIXA"
+              sync:
+                orgsUsersTeams:
+                  schedule:
+                    frequency: { minutes: 5 }
+                    timeout: { minutes: 1 }
+                jobTemplates:
+                  enabled: true
+                  schedule:
+                    frequency: { minutes: 5 }
+                    timeout: { minutes: 1 }
+
+  - disabled: false
+    package: >-
+      oci://registry.redhat.io/ansible-automation-platform/automation-portal:2.2!ansible-plugin-scaffolder-backend-module-backstage-rhaap
+    pluginConfig:
+      dynamicPlugins:
+        backend:
+          ansible.plugin-scaffolder-backend-module-backstage-rhaap:
+```
+
+## Fluxo do template
+
+```
+┌─────────────────────┐     ┌──────────────────────┐     ┌─────────────────────┐
+│  1. Token do AAP    │────▶│  2. Seleção de Job   │────▶│  3. Confirmação     │
+│  (AAPTokenField)    │     │  Template, Inventário │     │                     │
+│                     │     │  (AAPResourcePicker)  │     │                     │
+└─────────────────────┘     └──────────────────────┘     └────────┬────────────┘
+                                                                   │
+                                                                   ▼
+                                                         ┌─────────────────────┐
+                                                         │  ansible:jobTemplate │
+                                                         │  :launch            │
+                                                         │  (Executa no AAP)   │
+                                                         └─────────────────────┘
+```
+
+## Parâmetros disponíveis
+
+| Parâmetro         | Tipo    | Campo UI           | Padrão          | Descrição                                    |
+|-------------------|---------|--------------------|-----------------|----------------------------------------------|
+| `aapToken`        | string  | AAPTokenField      | —               | Token de autenticação do AAP                 |
+| `jobTemplate`     | string  | AAPResourcePicker  | Hello World Caixa | Job Template a executar                    |
+| `inventory`       | string  | AAPResourcePicker  | Demo Inventory  | Inventário a ser utilizado                   |
+| `verbosity`       | number  | select             | 0               | Nível de verbosidade (0-4)                   |
+| `extraVariables`  | string  | textarea           | —               | Variáveis extras em YAML para o playbook     |
+
+## Como registrar no Backstage / RHDH
 
 Adicione a referência ao `catalog-info.yaml` no seu `app-config.yaml`:
 
@@ -46,14 +131,6 @@ catalog:
 ```
 
 Ou importe manualmente via **Backstage UI → Register Existing Component**.
-
-## Parâmetros disponíveis
-
-| Parâmetro         | Tipo    | Padrão          | Descrição                                    |
-|-------------------|---------|-----------------|----------------------------------------------|
-| `inventory`       | string  | Demo Inventory  | Inventário a ser utilizado                   |
-| `verbosity`       | number  | 0               | Nível de verbosidade (0-4)                   |
-| `extraVariables`  | string  | —               | Variáveis extras em YAML para o playbook     |
 
 ## Estrutura do repositório
 
