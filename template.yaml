@@ -9,7 +9,7 @@ metadata:
     - aap
     - automation
     - caixa
-    - v0.0.1
+    - v0-0-1
   labels:
     version: 0.0.1
   annotations:
