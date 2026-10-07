@@ -9,9 +9,9 @@ metadata:
     - aap
     - automation
     - caixa
-    - v0-0-1
+    - v0-0-2
   labels:
-    version: 0.0.1
+    version: 0.0.2
   annotations:
     backstage.io/techdocs-ref: dir:.
   links:
@@ -25,15 +25,32 @@ spec:
 
   parameters:
     - title: Conexão com o AAP
-      description: Forneça o token de acesso ao Ansible Automation Platform.
+      description: >
+        Escolha como autenticar no AAP. Você pode usar o token padrão configurado
+        no ambiente (variável AAP_CONTROLLER_TOKEN) ou informar um token personalizado.
       required:
-        - aapToken
+        - tokenSource
       properties:
-        aapToken:
-          title: Token do AAP
+        tokenSource:
+          title: Origem do Token
           type: string
-          description: Token de autenticação para o Ansible Automation Platform
-          ui:field: AAPTokenField
+          description: Selecione a origem do token de autenticação
+          default: environment
+          enum:
+            - environment
+            - custom
+          enumNames:
+            - "Usar token padrão do ambiente (AAP_CONTROLLER_TOKEN)"
+            - "Informar token manualmente"
+          ui:widget: radio
+
+        customToken:
+          title: Token personalizado
+          type: string
+          description: Informe o token de autenticação do AAP (somente se selecionou "Informar token manualmente")
+          ui:widget: password
+          ui:options:
+            allowEmpty: true
 
     - title: Configuração do Job Template
       description: >
@@ -112,7 +129,7 @@ spec:
         extraVars: ${{ parameters.extraVariables }}
         verbosity: ${{ parameters.verbosity }}
         connectionDetails:
-          token: ${{ parameters.aapToken }}
+          token: ${{ parameters.tokenSource === "custom" and parameters.customToken or "$AAP_CONTROLLER_TOKEN" }}
 
     - id: log-output
       name: Registrar resultado da execução
