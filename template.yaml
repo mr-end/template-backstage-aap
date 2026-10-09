@@ -9,9 +9,9 @@ metadata:
     - aap
     - automation
     - caixa
-    - v0-0-2
+    - v0-0-3
   labels:
-    version: 0.0.2
+    version: 0.0.3
   annotations:
     backstage.io/techdocs-ref: dir:.
   links:
@@ -64,20 +64,24 @@ spec:
           type: string
           description: Selecione o Job Template a ser executado no AAP
           default: Hello World Caixa
+          resource: job_templates
           ui:field: AAPResourcePicker
           ui:options:
-            resourceType: job_template
-            organization: CAIXA
+            autocomplete:
+              resource: job_templates
+              organization: CAIXA
 
         inventory:
           title: Inventário
           type: string
           description: Inventário a ser utilizado na execução
           default: Demo Inventory
+          resource: inventories
           ui:field: AAPResourcePicker
           ui:options:
-            resourceType: inventory
-            organization: CAIXA
+            autocomplete:
+              resource: inventories
+              organization: CAIXA
 
         verbosity:
           title: Verbosidade
