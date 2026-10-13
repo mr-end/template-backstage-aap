@@ -9,9 +9,9 @@ metadata:
     - aap
     - automation
     - caixa
-    - v0-0-9
+    - v0-0-10
   labels:
-    version: 0.0.9
+    version: 0.0.10
   annotations:
     backstage.io/techdocs-ref: dir:.
   links:
@@ -71,12 +71,29 @@ spec:
         - confirmExecution
 
   steps:
-    - id: find-job-template
-      name: Buscar Job Template no AAP
+    - id: list-job-templates
+      name: Listar todos os Job Templates no AAP
       action: http:backstage:request
       input:
         method: GET
-        path: /api/proxy/ansible-automation-controller/api/v2/job_templates/?name=Hello+World+Caixa
+        path: /api/proxy/ansible-automation-controller/api/v2/job_templates/
+        headers:
+          Content-Type: application/json
+
+    - id: log-job-templates
+      name: Exibir Job Templates encontrados
+      action: debug:log
+      input:
+        message: |
+          Job Templates encontrados no AAP (total: ${{ steps['list-job-templates'].output.body.count }}):
+          ${{ steps['list-job-templates'].output.body.results | dump }}
+
+    - id: find-job-template
+      name: Buscar Job Template "Hello World Caixa"
+      action: http:backstage:request
+      input:
+        method: GET
+        path: /api/proxy/ansible-automation-controller/api/v2/job_templates/?name=CAIXA
         headers:
           Content-Type: application/json
 
