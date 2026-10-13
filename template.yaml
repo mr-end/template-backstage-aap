@@ -9,9 +9,9 @@ metadata:
     - aap
     - automation
     - caixa
-    - v0-0-3
+    - v0-0-4
   labels:
-    version: 0.0.3
+    version: 0.0.4
   annotations:
     backstage.io/techdocs-ref: dir:.
   links:
@@ -24,65 +24,12 @@ spec:
   lifecycle: production
 
   parameters:
-    - title: Conexão com o AAP
-      description: >
-        Escolha como autenticar no AAP. Você pode usar o token padrão configurado
-        no ambiente (variável AAP_CONTROLLER_TOKEN) ou informar um token personalizado.
-      required:
-        - tokenSource
-      properties:
-        tokenSource:
-          title: Origem do Token
-          type: string
-          description: Selecione a origem do token de autenticação
-          default: environment
-          enum:
-            - environment
-            - custom
-          enumNames:
-            - "Usar token padrão do ambiente (AAP_CONTROLLER_TOKEN)"
-            - "Informar token manualmente"
-          ui:widget: radio
-
-        customToken:
-          title: Token personalizado
-          type: string
-          description: Informe o token de autenticação do AAP (somente se selecionou "Informar token manualmente")
-          ui:widget: password
-          ui:options:
-            allowEmpty: true
-
-    - title: Configuração do Job Template
+    - title: Executar Playbook no AAP
       description: >
         Este template executa o playbook **linux_playbook.yml** no AAP
         utilizando o Job Template "Hello World Caixa" da organização CAIXA.
-      required:
-        - jobTemplate
+        A conexão com o AAP é gerenciada automaticamente pela plataforma.
       properties:
-        jobTemplate:
-          title: Job Template
-          type: string
-          description: Selecione o Job Template a ser executado no AAP
-          default: Hello World Caixa
-          resource: job_templates
-          ui:field: AAPResourcePicker
-          ui:options:
-            autocomplete:
-              resource: job_templates
-              organization: CAIXA
-
-        inventory:
-          title: Inventário
-          type: string
-          description: Inventário a ser utilizado na execução
-          default: Demo Inventory
-          resource: inventories
-          ui:field: AAPResourcePicker
-          ui:options:
-            autocomplete:
-              resource: inventories
-              organization: CAIXA
-
         verbosity:
           title: Verbosidade
           type: number
@@ -128,12 +75,10 @@ spec:
       name: Executar Job Template no AAP
       action: ansible:jobTemplate:launch
       input:
-        jobTemplate: ${{ parameters.jobTemplate }}
-        inventory: ${{ parameters.inventory }}
+        jobTemplate: Hello World Caixa
+        inventory: Demo Inventory
         extraVars: ${{ parameters.extraVariables }}
         verbosity: ${{ parameters.verbosity }}
-        connectionDetails:
-          token: ${{ parameters.tokenSource === "custom" and parameters.customToken or "$AAP_CONTROLLER_TOKEN" }}
 
     - id: log-output
       name: Registrar resultado da execução
