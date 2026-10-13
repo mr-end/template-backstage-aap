@@ -9,9 +9,9 @@ metadata:
     - aap
     - automation
     - caixa
-    - v0-0-6
+    - v0-0-8
   labels:
-    version: 0.0.6
+    version: 0.0.8
   annotations:
     backstage.io/techdocs-ref: dir:.
   links:
@@ -71,14 +71,27 @@ spec:
         - confirmExecution
 
   steps:
+    - id: find-job-template
+      name: Buscar Job Template no AAP
+      action: http:backstage:request
+      input:
+        method: GET
+        path: /api/proxy/aap/api/v2/job_templates/?name=Hello+World+Caixa
+        headers:
+          Content-Type: application/json
+
     - id: launch-job-template
       name: Executar Job Template no AAP
-      action: ansible:jobTemplate:launch
+      action: http:backstage:request
       input:
-        jobTemplate: CAIXA
-        inventory: CAIXA
-        extraVars: ${{ parameters.extraVariables }}
-        verbosity: ${{ parameters.verbosity }}
+        method: POST
+        path: >-
+          /api/proxy/aap/api/v2/job_templates/${{ steps['find-job-template'].output.body.results[0].id }}/launch/
+        headers:
+          Content-Type: application/json
+        body:
+          verbosity: ${{ parameters.verbosity }}
+          extra_vars: ${{ parameters.extraVariables }}
 
     - id: log-output
       name: Registrar resultado da execução
@@ -86,16 +99,18 @@ spec:
       input:
         message: >
           Job Template "Hello World Caixa" executado com sucesso!
-          Job ID: ${{ steps['launch-job-template'].output.jobId }}
-          Status: ${{ steps['launch-job-template'].output.status }}
+          Job ID: ${{ steps['launch-job-template'].output.body.id }}
+          Status: ${{ steps['launch-job-template'].output.body.status }}
+          URL: ${{ steps['launch-job-template'].output.body.url }}
 
   output:
     links:
       - title: Ver execução no AAP
-        url: ${{ steps['launch-job-template'].output.jobUrl }}
+        url: >-
+          https://aap-hub-aap.apps.cluster-bxnhf.dyn.redhatworkshops.io/#/jobs/${{ steps['launch-job-template'].output.body.id }}/details
         icon: dashboard
     text:
       - title: ID do Job
-        content: ${{ steps['launch-job-template'].output.jobId }}
+        content: "${{ steps['launch-job-template'].output.body.id }}"
       - title: Status
-        content: ${{ steps['launch-job-template'].output.status }}
+        content: "${{ steps['launch-job-template'].output.body.status }}"
