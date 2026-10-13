@@ -9,9 +9,9 @@ metadata:
     - aap
     - automation
     - caixa
-    - v0-0-4
+    - v0-0-5
   labels:
-    version: 0.0.4
+    version: 0.0.5
   annotations:
     backstage.io/techdocs-ref: dir:.
   links:
@@ -75,8 +75,8 @@ spec:
       name: Executar Job Template no AAP
       action: ansible:jobTemplate:launch
       input:
-        jobTemplate: Hello World Caixa
-        inventory: Demo Inventory
+        jobTemplate: CAIXA
+        inventory: CAIXA
         extraVars: ${{ parameters.extraVariables }}
         verbosity: ${{ parameters.verbosity }}
 
