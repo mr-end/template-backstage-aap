@@ -9,9 +9,9 @@ metadata:
     - aap
     - automation
     - caixa
-    - v0-0-10
+    - v0-0-11
   labels:
-    version: 0.0.10
+    version: 0.0.11
   annotations:
     backstage.io/techdocs-ref: dir:.
   links:
@@ -24,46 +24,12 @@ spec:
   lifecycle: production
 
   parameters:
-    - title: Executar Playbook no AAP
+    - title: Diagnóstico - Testar conexão com o AAP
       description: >
-        Este template executa o playbook **linux_playbook.yml** no AAP
-        utilizando o Job Template "Hello World Caixa" da organização CAIXA.
-        A conexão com o AAP é gerenciada automaticamente pela plataforma.
-      properties:
-        verbosity:
-          title: Verbosidade
-          type: number
-          description: Nível de verbosidade da execução
-          default: 0
-          enum:
-            - 0
-            - 1
-            - 2
-            - 3
-            - 4
-          enumNames:
-            - "0 (Normal)"
-            - "1 (Verbose)"
-            - "2 (More Verbose)"
-            - "3 (Debug)"
-            - "4 (Connection Debug)"
-          ui:widget: select
-
-        extraVariables:
-          title: Variáveis Extra
-          type: string
-          description: >
-            Variáveis extras em formato YAML para passar ao playbook (opcional).
-            Exemplo: key: value
-          ui:widget: textarea
-          ui:options:
-            rows: 5
-
-    - title: Confirmação
-      description: Revise os dados antes de executar a automação.
+        Versão de diagnóstico para identificar o caminho correto da API do AAP.
       properties:
         confirmExecution:
-          title: Confirmo que desejo executar esta automação
+          title: Executar diagnóstico
           type: boolean
           default: false
           ui:widget: checkbox
@@ -71,63 +37,107 @@ spec:
         - confirmExecution
 
   steps:
-    - id: list-job-templates
-      name: Listar todos os Job Templates no AAP
+    - id: test-proxy-root
+      name: "Teste 1: GET /api/proxy/ansible-automation-controller/"
+      action: http:backstage:request
+      input:
+        method: GET
+        path: /api/proxy/ansible-automation-controller/
+        headers:
+          Content-Type: application/json
+      continueOnError: true
+
+    - id: log-test-1
+      name: "Resultado Teste 1"
+      action: debug:log
+      input:
+        message: |
+          Teste 1 - /api/proxy/ansible-automation-controller/
+          Status: ${{ steps['test-proxy-root'].output.code }}
+          Body: ${{ steps['test-proxy-root'].output.body | dump }}
+
+    - id: test-api-v2
+      name: "Teste 2: GET /api/proxy/ansible-automation-controller/api/v2/"
+      action: http:backstage:request
+      input:
+        method: GET
+        path: /api/proxy/ansible-automation-controller/api/v2/
+        headers:
+          Content-Type: application/json
+      continueOnError: true
+
+    - id: log-test-2
+      name: "Resultado Teste 2"
+      action: debug:log
+      input:
+        message: |
+          Teste 2 - /api/proxy/ansible-automation-controller/api/v2/
+          Status: ${{ steps['test-api-v2'].output.code }}
+          Body: ${{ steps['test-api-v2'].output.body | dump }}
+
+    - id: test-controller-v2
+      name: "Teste 3: GET /api/proxy/ansible-automation-controller/api/controller/v2/"
+      action: http:backstage:request
+      input:
+        method: GET
+        path: /api/proxy/ansible-automation-controller/api/controller/v2/
+        headers:
+          Content-Type: application/json
+      continueOnError: true
+
+    - id: log-test-3
+      name: "Resultado Teste 3"
+      action: debug:log
+      input:
+        message: |
+          Teste 3 - /api/proxy/ansible-automation-controller/api/controller/v2/
+          Status: ${{ steps['test-controller-v2'].output.code }}
+          Body: ${{ steps['test-controller-v2'].output.body | dump }}
+
+    - id: test-controller-v2-jt
+      name: "Teste 4: GET /api/proxy/ansible-automation-controller/api/controller/v2/job_templates/"
+      action: http:backstage:request
+      input:
+        method: GET
+        path: /api/proxy/ansible-automation-controller/api/controller/v2/job_templates/
+        headers:
+          Content-Type: application/json
+      continueOnError: true
+
+    - id: log-test-4
+      name: "Resultado Teste 4"
+      action: debug:log
+      input:
+        message: |
+          Teste 4 - /api/proxy/ansible-automation-controller/api/controller/v2/job_templates/
+          Status: ${{ steps['test-controller-v2-jt'].output.code }}
+          Body: ${{ steps['test-controller-v2-jt'].output.body | dump }}
+
+    - id: test-v2-jt
+      name: "Teste 5: GET /api/proxy/ansible-automation-controller/api/v2/job_templates/"
       action: http:backstage:request
       input:
         method: GET
         path: /api/proxy/ansible-automation-controller/api/v2/job_templates/
         headers:
           Content-Type: application/json
+      continueOnError: true
 
-    - id: log-job-templates
-      name: Exibir Job Templates encontrados
+    - id: log-test-5
+      name: "Resultado Teste 5"
       action: debug:log
       input:
         message: |
-          Job Templates encontrados no AAP (total: ${{ steps['list-job-templates'].output.body.count }}):
-          ${{ steps['list-job-templates'].output.body.results | dump }}
-
-    - id: find-job-template
-      name: Buscar Job Template "Hello World Caixa"
-      action: http:backstage:request
-      input:
-        method: GET
-        path: /api/proxy/ansible-automation-controller/api/v2/job_templates/?name=CAIXA
-        headers:
-          Content-Type: application/json
-
-    - id: launch-job-template
-      name: Executar Job Template no AAP
-      action: http:backstage:request
-      input:
-        method: POST
-        path: >-
-          /api/proxy/ansible-automation-controller/api/v2/job_templates/${{ steps['find-job-template'].output.body.results[0].id }}/launch/
-        headers:
-          Content-Type: application/json
-        body:
-          verbosity: ${{ parameters.verbosity }}
-          extra_vars: ${{ parameters.extraVariables }}
-
-    - id: log-output
-      name: Registrar resultado da execução
-      action: debug:log
-      input:
-        message: >
-          Job Template "Hello World Caixa" executado com sucesso!
-          Job ID: ${{ steps['launch-job-template'].output.body.id }}
-          Status: ${{ steps['launch-job-template'].output.body.status }}
-          URL: ${{ steps['launch-job-template'].output.body.url }}
+          Teste 5 - /api/proxy/ansible-automation-controller/api/v2/job_templates/
+          Status: ${{ steps['test-v2-jt'].output.code }}
+          Body: ${{ steps['test-v2-jt'].output.body | dump }}
 
   output:
-    links:
-      - title: Ver execução no AAP
-        url: >-
-          https://aap-hub-aap.apps.cluster-bxnhf.dyn.redhatworkshops.io/#/jobs/${{ steps['launch-job-template'].output.body.id }}/details
-        icon: dashboard
     text:
-      - title: ID do Job
-        content: "${{ steps['launch-job-template'].output.body.id }}"
-      - title: Status
-        content: "${{ steps['launch-job-template'].output.body.status }}"
+      - title: Resumo do Diagnóstico
+        content: |
+          Teste 1 (raiz): ${{ steps['test-proxy-root'].output.code }}
+          Teste 2 (/api/v2/): ${{ steps['test-api-v2'].output.code }}
+          Teste 3 (/api/controller/v2/): ${{ steps['test-controller-v2'].output.code }}
+          Teste 4 (/api/controller/v2/job_templates/): ${{ steps['test-controller-v2-jt'].output.code }}
+          Teste 5 (/api/v2/job_templates/): ${{ steps['test-v2-jt'].output.code }}
