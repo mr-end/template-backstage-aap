@@ -9,9 +9,9 @@ metadata:
     - aap
     - automation
     - caixa
-    - v0-0-8
+    - v0-0-9
   labels:
-    version: 0.0.8
+    version: 0.0.9
   annotations:
     backstage.io/techdocs-ref: dir:.
   links:
@@ -76,7 +76,7 @@ spec:
       action: http:backstage:request
       input:
         method: GET
-        path: /api/proxy/aap/api/v2/job_templates/?name=Hello+World+Caixa
+        path: /api/proxy/ansible-automation-controller/api/v2/job_templates/?name=Hello+World+Caixa
         headers:
           Content-Type: application/json
 
@@ -86,7 +86,7 @@ spec:
       input:
         method: POST
         path: >-
-          /api/proxy/aap/api/v2/job_templates/${{ steps['find-job-template'].output.body.results[0].id }}/launch/
+          /api/proxy/ansible-automation-controller/api/v2/job_templates/${{ steps['find-job-template'].output.body.results[0].id }}/launch/
         headers:
           Content-Type: application/json
         body:
