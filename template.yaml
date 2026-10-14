@@ -131,7 +131,7 @@ spec:
     links:
       - title: Ver execução no AAP
         url: >-
-          https://aap-hub-aap.apps.amv6pge9oeeda93d98.eastus.aroapp.io/#/jobs/${{ steps['launch-job-template'].output.body.id }}/details
+          https://aap-hub-aap.apps.amv6pge9oeeda93d98.eastus.aroapp.io/execution/jobs/playbook/${{ steps['launch-job-template'].output.body.id }}/details
         icon: dashboard
     text:
       - title: ID do Job
