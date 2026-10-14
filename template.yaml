@@ -9,9 +9,9 @@ metadata:
     - aap
     - automation
     - caixa
-    - v0-0-18
+    - v0-0-19
   labels:
-    version: 0.0.18
+    version: 0.0.19
   annotations:
     backstage.io/techdocs-ref: dir:.
   links:
@@ -165,9 +165,9 @@ spec:
       input:
         method: GET
         path: >-
-          /proxy/ansible-automation-controller/api/controller/v2/jobs/${{ steps['launch-job-template'].output.body.id }}/stdout/?format=txt
+          /proxy/ansible-automation-controller/api/controller/v2/jobs/${{ steps['launch-job-template'].output.body.id }}/stdout/?format=json
         headers:
-          Accept: text/plain
+          Content-Type: application/json
 
     - id: log-playbook-output
       name: Exibir log do Playbook
@@ -178,7 +178,7 @@ spec:
           Job ID: ${{ steps['launch-job-template'].output.body.id }}
           Status Final: ${{ steps['wait-job-3'].output.body.status or steps['wait-job-2'].output.body.status or steps['wait-job'].output.body.status }}
           =================================================
-          ${{ steps['fetch-job-stdout'].output.body }}
+          ${{ steps['fetch-job-stdout'].output.body.content }}
 
   output:
     links:
