@@ -93,7 +93,7 @@ spec:
       action: http:backstage:request
       input:
         method: GET
-        path: /proxy/ansible-automation-controller/api/controller/v2/job_templates/?name=Hello+World+Caixa
+        path: /proxy/ansible-automation-controller/api/controller/v2/job_templates/?id=8
         headers:
           Content-Type: application/json
 
