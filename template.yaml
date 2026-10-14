@@ -9,9 +9,9 @@ metadata:
     - aap
     - automation
     - caixa
-    - v0-0-17
+    - v0-0-18
   labels:
-    version: 0.0.17
+    version: 0.0.18
   annotations:
     backstage.io/techdocs-ref: dir:.
   links:
@@ -127,11 +127,64 @@ spec:
           Job ID: ${{ steps['launch-job-template'].output.body.id }}
           Status: ${{ steps['launch-job-template'].output.body.status }}
 
+    - id: wait-job
+      name: Aguardar conclusão do Job (tentativa 1)
+      action: http:backstage:request
+      input:
+        method: GET
+        path: >-
+          /proxy/ansible-automation-controller/api/controller/v2/jobs/${{ steps['launch-job-template'].output.body.id }}/
+        headers:
+          Content-Type: application/json
+
+    - id: wait-job-2
+      name: Aguardar conclusão do Job (tentativa 2)
+      if: ${{ steps['wait-job'].output.body.status === "pending" or steps['wait-job'].output.body.status === "waiting" or steps['wait-job'].output.body.status === "running" }}
+      action: http:backstage:request
+      input:
+        method: GET
+        path: >-
+          /proxy/ansible-automation-controller/api/controller/v2/jobs/${{ steps['launch-job-template'].output.body.id }}/
+        headers:
+          Content-Type: application/json
+
+    - id: wait-job-3
+      name: Aguardar conclusão do Job (tentativa 3)
+      if: ${{ steps['wait-job-2'].output.body.status === "pending" or steps['wait-job-2'].output.body.status === "waiting" or steps['wait-job-2'].output.body.status === "running" }}
+      action: http:backstage:request
+      input:
+        method: GET
+        path: >-
+          /proxy/ansible-automation-controller/api/controller/v2/jobs/${{ steps['launch-job-template'].output.body.id }}/
+        headers:
+          Content-Type: application/json
+
+    - id: fetch-job-stdout
+      name: Obter log de execução do Playbook
+      action: http:backstage:request
+      input:
+        method: GET
+        path: >-
+          /proxy/ansible-automation-controller/api/controller/v2/jobs/${{ steps['launch-job-template'].output.body.id }}/stdout/?format=txt
+        headers:
+          Accept: text/plain
+
+    - id: log-playbook-output
+      name: Exibir log do Playbook
+      action: debug:log
+      input:
+        message: |
+          ========== LOG DE EXECUÇÃO DO PLAYBOOK ==========
+          Job ID: ${{ steps['launch-job-template'].output.body.id }}
+          Status Final: ${{ steps['wait-job-3'].output.body.status or steps['wait-job-2'].output.body.status or steps['wait-job'].output.body.status }}
+          =================================================
+          ${{ steps['fetch-job-stdout'].output.body }}
+
   output:
     links:
       - title: Ver execução no AAP
         url: >-
-          https://aap-hub-aap.apps.amv6pge9oeeda93d98.eastus.aroapp.io/execution/jobs/playbook/${{ steps['launch-job-template'].output.body.id }}/details
+          https://aap-hub-aap.apps.amv6pge9oeeda93d98.eastus.aroapp.io/execution/jobs/playbook/${{ steps['launch-job-template'].output.body.id }}/output
         icon: dashboard
     text:
       - title: ID do Job
