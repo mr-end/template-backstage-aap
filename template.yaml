@@ -9,9 +9,9 @@ metadata:
     - aap
     - automation
     - caixa
-    - v0-0-19
+    - v0-0-20
   labels:
-    version: 0.0.19
+    version: 0.0.20
   annotations:
     backstage.io/techdocs-ref: dir:.
   links:
@@ -84,8 +84,6 @@ spec:
       input:
         method: GET
         path: /proxy/ansible-automation-controller/api/controller/v2/job_templates/
-        headers:
-          Content-Type: application/json
 
     - id: log-job-templates
       name: Exibir Job Templates encontrados
@@ -102,8 +100,6 @@ spec:
       input:
         method: GET
         path: /proxy/ansible-automation-controller/api/controller/v2/job_templates/?id=8
-        headers:
-          Content-Type: application/json
 
     - id: launch-job-template
       name: Executar Job Template no AAP
@@ -118,56 +114,125 @@ spec:
           verbosity: ${{ parameters.verbosity }}
           extra_vars: ${{ parameters.extraVariables }}
 
-    - id: log-output
-      name: Registrar resultado da execução
+    - id: log-launch
+      name: Registrar disparo do job
       action: debug:log
       input:
-        message: >
-          Job Template "Hello World Caixa" executado com sucesso!
-          Job ID: ${{ steps['launch-job-template'].output.body.id }}
-          Status: ${{ steps['launch-job-template'].output.body.status }}
+        message: >-
+          Job ${{ steps['launch-job-template'].output.body.id }} disparado
+          (status inicial: ${{ steps['launch-job-template'].output.body.status }}).
+          Aguardando a conclusão...
 
-    - id: wait-job
-      name: Aguardar conclusão do Job (tentativa 1)
+    # ------------------------------------------------------------------
+    # Polling do status do job.
+    # O scaffolder não tem laço "até que", então cada rodada é um par
+    # sleep + GET. Uma rodada só executa se a anterior executou E o job
+    # ainda não chegou a um status final; as demais são puladas.
+    # Tempo máximo de espera = rodadas x amount (aqui 6 x 10s = 60s).
+    # Para jobs mais longos, aumente o amount ou copie mais rodadas.
+    # ------------------------------------------------------------------
+    - id: wait-1
+      name: Aguardar job (rodada 1)
+      action: roadiehq:utils:sleep
+      input:
+        amount: 10
+
+    - id: status-1
+      name: Consultar status do job (rodada 1)
       action: http:backstage:request
       input:
         method: GET
-        path: >-
-          /proxy/ansible-automation-controller/api/controller/v2/jobs/${{ steps['launch-job-template'].output.body.id }}/
-        headers:
-          Content-Type: application/json
+        logRequestPath: false
+        path: /proxy/ansible-automation-controller/api/controller/v2/jobs/${{ steps['launch-job-template'].output.body.id }}/
 
-    - id: wait-job-2
-      name: Aguardar conclusão do Job (tentativa 2)
-      if: ${{ steps['wait-job'].output.body.status === "pending" or steps['wait-job'].output.body.status === "waiting" or steps['wait-job'].output.body.status === "running" }}
+    - id: wait-2
+      name: Aguardar job (rodada 2)
+      if: ${{ steps['status-1'] and steps['status-1'].output.body.status not in ['successful','failed','error','canceled'] }}
+      action: roadiehq:utils:sleep
+      input:
+        amount: 10
+
+    - id: status-2
+      name: Consultar status do job (rodada 2)
+      if: ${{ steps['status-1'] and steps['status-1'].output.body.status not in ['successful','failed','error','canceled'] }}
       action: http:backstage:request
       input:
         method: GET
-        path: >-
-          /proxy/ansible-automation-controller/api/controller/v2/jobs/${{ steps['launch-job-template'].output.body.id }}/
-        headers:
-          Content-Type: application/json
+        logRequestPath: false
+        path: /proxy/ansible-automation-controller/api/controller/v2/jobs/${{ steps['launch-job-template'].output.body.id }}/
 
-    - id: wait-job-3
-      name: Aguardar conclusão do Job (tentativa 3)
-      if: ${{ steps['wait-job-2'].output.body.status === "pending" or steps['wait-job-2'].output.body.status === "waiting" or steps['wait-job-2'].output.body.status === "running" }}
+    - id: wait-3
+      name: Aguardar job (rodada 3)
+      if: ${{ steps['status-2'] and steps['status-2'].output.body.status not in ['successful','failed','error','canceled'] }}
+      action: roadiehq:utils:sleep
+      input:
+        amount: 10
+
+    - id: status-3
+      name: Consultar status do job (rodada 3)
+      if: ${{ steps['status-2'] and steps['status-2'].output.body.status not in ['successful','failed','error','canceled'] }}
       action: http:backstage:request
       input:
         method: GET
-        path: >-
-          /proxy/ansible-automation-controller/api/controller/v2/jobs/${{ steps['launch-job-template'].output.body.id }}/
-        headers:
-          Content-Type: application/json
+        logRequestPath: false
+        path: /proxy/ansible-automation-controller/api/controller/v2/jobs/${{ steps['launch-job-template'].output.body.id }}/
+
+    - id: wait-4
+      name: Aguardar job (rodada 4)
+      if: ${{ steps['status-3'] and steps['status-3'].output.body.status not in ['successful','failed','error','canceled'] }}
+      action: roadiehq:utils:sleep
+      input:
+        amount: 10
+
+    - id: status-4
+      name: Consultar status do job (rodada 4)
+      if: ${{ steps['status-3'] and steps['status-3'].output.body.status not in ['successful','failed','error','canceled'] }}
+      action: http:backstage:request
+      input:
+        method: GET
+        logRequestPath: false
+        path: /proxy/ansible-automation-controller/api/controller/v2/jobs/${{ steps['launch-job-template'].output.body.id }}/
+
+    - id: wait-5
+      name: Aguardar job (rodada 5)
+      if: ${{ steps['status-4'] and steps['status-4'].output.body.status not in ['successful','failed','error','canceled'] }}
+      action: roadiehq:utils:sleep
+      input:
+        amount: 10
+
+    - id: status-5
+      name: Consultar status do job (rodada 5)
+      if: ${{ steps['status-4'] and steps['status-4'].output.body.status not in ['successful','failed','error','canceled'] }}
+      action: http:backstage:request
+      input:
+        method: GET
+        logRequestPath: false
+        path: /proxy/ansible-automation-controller/api/controller/v2/jobs/${{ steps['launch-job-template'].output.body.id }}/
+
+    - id: wait-6
+      name: Aguardar job (rodada 6)
+      if: ${{ steps['status-5'] and steps['status-5'].output.body.status not in ['successful','failed','error','canceled'] }}
+      action: roadiehq:utils:sleep
+      input:
+        amount: 10
+
+    - id: status-6
+      name: Consultar status do job (rodada 6)
+      if: ${{ steps['status-5'] and steps['status-5'].output.body.status not in ['successful','failed','error','canceled'] }}
+      action: http:backstage:request
+      input:
+        method: GET
+        logRequestPath: false
+        path: /proxy/ansible-automation-controller/api/controller/v2/jobs/${{ steps['launch-job-template'].output.body.id }}/
 
     - id: fetch-job-stdout
       name: Obter log de execução do Playbook
       action: http:backstage:request
       input:
         method: GET
-        path: >-
-          /proxy/ansible-automation-controller/api/controller/v2/jobs/${{ steps['launch-job-template'].output.body.id }}/stdout/?format=json
-        headers:
-          Content-Type: application/json
+        # format=txt devolve texto puro sem códigos ANSI; o plugin da Roadie
+        # coloca respostas não-JSON em output.body.message
+        path: /proxy/ansible-automation-controller/api/controller/v2/jobs/${{ steps['launch-job-template'].output.body.id }}/stdout/?format=txt
 
     - id: log-playbook-output
       name: Exibir log do Playbook
@@ -176,9 +241,9 @@ spec:
         message: |
           ========== LOG DE EXECUÇÃO DO PLAYBOOK ==========
           Job ID: ${{ steps['launch-job-template'].output.body.id }}
-          Status Final: ${{ steps['wait-job-3'].output.body.status or steps['wait-job-2'].output.body.status or steps['wait-job'].output.body.status }}
+          Status Final: ${{ steps['status-6'].output.body.status or steps['status-5'].output.body.status or steps['status-4'].output.body.status or steps['status-3'].output.body.status or steps['status-2'].output.body.status or steps['status-1'].output.body.status }}
           =================================================
-          ${{ steps['fetch-job-stdout'].output.body.content }}
+          ${{ steps['fetch-job-stdout'].output.body.message }}
 
   output:
     links:
@@ -189,5 +254,5 @@ spec:
     text:
       - title: ID do Job
         content: "${{ steps['launch-job-template'].output.body.id }}"
-      - title: Status
-        content: "${{ steps['launch-job-template'].output.body.status }}"
+      - title: Status final
+        content: "${{ steps['status-6'].output.body.status or steps['status-5'].output.body.status or steps['status-4'].output.body.status or steps['status-3'].output.body.status or steps['status-2'].output.body.status or steps['status-1'].output.body.status }}"
