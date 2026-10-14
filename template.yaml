@@ -42,7 +42,7 @@ spec:
       action: http:backstage:request
       input:
         method: GET
-        path: /api/proxy/ansible-automation-controller/
+        path: /proxy/ansible-automation-controller/api/controller/v2/ping/
         headers:
           Content-Type: application/json
       continueOnError: true
@@ -52,16 +52,16 @@ spec:
       action: debug:log
       input:
         message: |
-          Teste 1 - /api/proxy/ansible-automation-controller/
+          Teste 1 - /proxy/ansible-automation-controller/api/controller/v2/ping
           Status: ${{ steps['test-proxy-root'].output.code }}
           Body: ${{ steps['test-proxy-root'].output.body | dump }}
 
     - id: test-api-v2
-      name: "Teste 2: GET /api/proxy/ansible-automation-controller/api/v2/"
+      name: "Teste 2: GET /proxy/ansible-automation-controller/api/v2/"
       action: http:backstage:request
       input:
         method: GET
-        path: /api/proxy/ansible-automation-controller/api/v2/
+        path: /proxy/ansible-automation-controller/api/v2/
         headers:
           Content-Type: application/json
       continueOnError: true
