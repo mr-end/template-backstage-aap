@@ -9,9 +9,9 @@ metadata:
     - aap
     - automation
     - caixa
-    - v0-0-20
+    - v0-1-0
   labels:
-    version: 0.0.20
+    version: 0.1.0
   annotations:
     backstage.io/techdocs-ref: dir:.
   links:
@@ -28,8 +28,21 @@ spec:
       description: >
         Este template executa o playbook **linux_playbook.yml** no AAP
         utilizando o Job Template "Hello World Caixa" da organização CAIXA.
-        A conexão com o AAP é gerenciada automaticamente pela plataforma.
+        A execução usa as suas credenciais do AAP e aguarda o término do job.
+      required:
+        - token
       properties:
+        # Obtém o token OAuth do usuário logado no AAP (provider de auth "rhaap").
+        # O valor real fica em secrets.aapToken; o campo não aparece no formulário.
+        token:
+          title: Token AAP
+          type: string
+          ui:field: AAPTokenField
+          ui:widget: hidden
+          ui:backstage:
+            review:
+              show: false
+
         listJobTemplates:
           title: Listar todos os Job Templates antes de executar
           type: boolean
@@ -39,7 +52,9 @@ spec:
         verbosity:
           title: Verbosidade
           type: number
-          description: Nível de verbosidade da execução
+          description: >-
+            Nível de verbosidade da execução (requer "Prompt on launch" de
+            Verbosity no Job Template)
           default: 0
           enum:
             - 0
@@ -60,7 +75,7 @@ spec:
           type: string
           description: >
             Variáveis extras em formato YAML para passar ao playbook (opcional).
-            Exemplo: key: value
+            Exemplo: key: value. Requer "Prompt on launch" de Variables no Job Template.
           ui:widget: textarea
           ui:options:
             rows: 5
@@ -94,165 +109,41 @@ spec:
           Job Templates encontrados no AAP (total: ${{ steps['list-job-templates'].output.body.count }}):
           ${{ steps['list-job-templates'].output.body.results | dump }}
 
-    - id: find-job-template
-      name: Buscar Job Template "Hello World Caixa"
-      action: http:backstage:request
-      input:
-        method: GET
-        path: /proxy/ansible-automation-controller/api/controller/v2/job_templates/?id=8
-
+    # Execução síncrona: a ação lança o job, faz polling do status a cada 5s
+    # (máximo 1h) e só termina quando o job termina. Ao final, registra no log
+    # da task as mensagens de ansible.builtin.debug do playbook.
+    # Se o job não terminar como "successful", este step falha.
+    # Se a task for cancelada no Developer Hub, o job é cancelado no AAP.
     - id: launch-job-template
       name: Executar Job Template no AAP
-      action: http:backstage:request
+      action: rhaap:launch-job-template
       input:
-        method: POST
-        path: >-
-          /proxy/ansible-automation-controller/api/controller/v2/job_templates/${{ steps['find-job-template'].output.body.results[0].id }}/launch/
-        headers:
-          Content-Type: application/json
-        body:
-          verbosity: ${{ parameters.verbosity }}
-          extra_vars: ${{ parameters.extraVariables }}
+        token: ${{ secrets.aapToken }}
+        waitForCompletion: true
+        values:
+          # O template é localizado pelo NOME no AAP
+          template: Hello World Caixa
+          verbosity:
+            id: ${{ parameters.verbosity }}
+            name: verbosity
+          extraVariables: ${{ parameters.extraVariables }}
 
-    - id: log-launch
-      name: Registrar disparo do job
+    - id: log-output
+      name: Registrar resultado da execução
       action: debug:log
       input:
         message: >-
-          Job ${{ steps['launch-job-template'].output.body.id }} disparado
-          (status inicial: ${{ steps['launch-job-template'].output.body.status }}).
-          Aguardando a conclusão...
-
-    # ------------------------------------------------------------------
-    # Polling do status do job.
-    # O scaffolder não tem laço "até que", então cada rodada é um par
-    # sleep + GET. Uma rodada só executa se a anterior executou E o job
-    # ainda não chegou a um status final; as demais são puladas.
-    # Tempo máximo de espera = rodadas x amount (aqui 6 x 10s = 60s).
-    # Para jobs mais longos, aumente o amount ou copie mais rodadas.
-    # ------------------------------------------------------------------
-    - id: wait-1
-      name: Aguardar job (rodada 1)
-      action: roadiehq:utils:sleep
-      input:
-        amount: 10
-
-    - id: status-1
-      name: Consultar status do job (rodada 1)
-      action: http:backstage:request
-      input:
-        method: GET
-        logRequestPath: false
-        path: /proxy/ansible-automation-controller/api/controller/v2/jobs/${{ steps['launch-job-template'].output.body.id }}/
-
-    - id: wait-2
-      name: Aguardar job (rodada 2)
-      if: ${{ steps['status-1'] and steps['status-1'].output.body.status not in ['successful','failed','error','canceled'] }}
-      action: roadiehq:utils:sleep
-      input:
-        amount: 10
-
-    - id: status-2
-      name: Consultar status do job (rodada 2)
-      if: ${{ steps['status-1'] and steps['status-1'].output.body.status not in ['successful','failed','error','canceled'] }}
-      action: http:backstage:request
-      input:
-        method: GET
-        logRequestPath: false
-        path: /proxy/ansible-automation-controller/api/controller/v2/jobs/${{ steps['launch-job-template'].output.body.id }}/
-
-    - id: wait-3
-      name: Aguardar job (rodada 3)
-      if: ${{ steps['status-2'] and steps['status-2'].output.body.status not in ['successful','failed','error','canceled'] }}
-      action: roadiehq:utils:sleep
-      input:
-        amount: 10
-
-    - id: status-3
-      name: Consultar status do job (rodada 3)
-      if: ${{ steps['status-2'] and steps['status-2'].output.body.status not in ['successful','failed','error','canceled'] }}
-      action: http:backstage:request
-      input:
-        method: GET
-        logRequestPath: false
-        path: /proxy/ansible-automation-controller/api/controller/v2/jobs/${{ steps['launch-job-template'].output.body.id }}/
-
-    - id: wait-4
-      name: Aguardar job (rodada 4)
-      if: ${{ steps['status-3'] and steps['status-3'].output.body.status not in ['successful','failed','error','canceled'] }}
-      action: roadiehq:utils:sleep
-      input:
-        amount: 10
-
-    - id: status-4
-      name: Consultar status do job (rodada 4)
-      if: ${{ steps['status-3'] and steps['status-3'].output.body.status not in ['successful','failed','error','canceled'] }}
-      action: http:backstage:request
-      input:
-        method: GET
-        logRequestPath: false
-        path: /proxy/ansible-automation-controller/api/controller/v2/jobs/${{ steps['launch-job-template'].output.body.id }}/
-
-    - id: wait-5
-      name: Aguardar job (rodada 5)
-      if: ${{ steps['status-4'] and steps['status-4'].output.body.status not in ['successful','failed','error','canceled'] }}
-      action: roadiehq:utils:sleep
-      input:
-        amount: 10
-
-    - id: status-5
-      name: Consultar status do job (rodada 5)
-      if: ${{ steps['status-4'] and steps['status-4'].output.body.status not in ['successful','failed','error','canceled'] }}
-      action: http:backstage:request
-      input:
-        method: GET
-        logRequestPath: false
-        path: /proxy/ansible-automation-controller/api/controller/v2/jobs/${{ steps['launch-job-template'].output.body.id }}/
-
-    - id: wait-6
-      name: Aguardar job (rodada 6)
-      if: ${{ steps['status-5'] and steps['status-5'].output.body.status not in ['successful','failed','error','canceled'] }}
-      action: roadiehq:utils:sleep
-      input:
-        amount: 10
-
-    - id: status-6
-      name: Consultar status do job (rodada 6)
-      if: ${{ steps['status-5'] and steps['status-5'].output.body.status not in ['successful','failed','error','canceled'] }}
-      action: http:backstage:request
-      input:
-        method: GET
-        logRequestPath: false
-        path: /proxy/ansible-automation-controller/api/controller/v2/jobs/${{ steps['launch-job-template'].output.body.id }}/
-
-    - id: fetch-job-stdout
-      name: Obter log de execução do Playbook
-      action: http:backstage:request
-      input:
-        method: GET
-        # format=txt devolve texto puro sem códigos ANSI; o plugin da Roadie
-        # coloca respostas não-JSON em output.body.message
-        path: /proxy/ansible-automation-controller/api/controller/v2/jobs/${{ steps['launch-job-template'].output.body.id }}/stdout/?format=txt
-
-    - id: log-playbook-output
-      name: Exibir log do Playbook
-      action: debug:log
-      input:
-        message: |
-          ========== LOG DE EXECUÇÃO DO PLAYBOOK ==========
-          Job ID: ${{ steps['launch-job-template'].output.body.id }}
-          Status Final: ${{ steps['status-6'].output.body.status or steps['status-5'].output.body.status or steps['status-4'].output.body.status or steps['status-3'].output.body.status or steps['status-2'].output.body.status or steps['status-1'].output.body.status }}
-          =================================================
-          ${{ steps['fetch-job-stdout'].output.body.message }}
+          Job Template "Hello World Caixa" finalizado.
+          Job ID: ${{ steps['launch-job-template'].output.data.id }}.
+          Status: ${{ steps['launch-job-template'].output.data.status }}.
 
   output:
     links:
       - title: Ver execução no AAP
-        url: >-
-          https://aap-hub-aap.apps.amv6pge9oeeda93d98.eastus.aroapp.io/execution/jobs/playbook/${{ steps['launch-job-template'].output.body.id }}/output
+        url: ${{ steps['launch-job-template'].output.data.url }}
         icon: dashboard
     text:
       - title: ID do Job
-        content: "${{ steps['launch-job-template'].output.body.id }}"
-      - title: Status final
-        content: "${{ steps['status-6'].output.body.status or steps['status-5'].output.body.status or steps['status-4'].output.body.status or steps['status-3'].output.body.status or steps['status-2'].output.body.status or steps['status-1'].output.body.status }}"
+        content: "${{ steps['launch-job-template'].output.data.id }}"
+      - title: Status
+        content: "${{ steps['launch-job-template'].output.data.status }}"
