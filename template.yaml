@@ -9,9 +9,9 @@ metadata:
     - aap
     - automation
     - caixa
-    - v0-0-12
+    - v0-0-13
   labels:
-    version: 0.0.12
+    version: 0.0.13
   annotations:
     backstage.io/techdocs-ref: dir:.
   links:
@@ -38,7 +38,7 @@ spec:
 
   steps:
     - id: test-proxy-root
-      name: "Teste 1: GET /api/proxy/ansible-automation-controller/"
+      name: "Teste 1: GET /proxy/ansible-automation-controller/"
       action: http:backstage:request
       input:
         method: GET
@@ -71,16 +71,16 @@ spec:
       action: debug:log
       input:
         message: |
-          Teste 2 - /api/proxy/ansible-automation-controller/api/v2/
+          Teste 2 - /proxy/ansible-automation-controller/api/v2/
           Status: ${{ steps['test-api-v2'].output.code }}
           Body: ${{ steps['test-api-v2'].output.body | dump }}
 
     - id: test-controller-v2
-      name: "Teste 3: GET /api/proxy/ansible-automation-controller/api/controller/v2/"
+      name: "Teste 3: GET /proxy/ansible-automation-controller/api/controller/v2/"
       action: http:backstage:request
       input:
         method: GET
-        path: /api/proxy/ansible-automation-controller/api/controller/v2/
+        path: /proxy/ansible-automation-controller/api/controller/v2/
         headers:
           Content-Type: application/json
       continueOnError: true
@@ -90,16 +90,16 @@ spec:
       action: debug:log
       input:
         message: |
-          Teste 3 - /api/proxy/ansible-automation-controller/api/controller/v2/
+          Teste 3 - /proxy/ansible-automation-controller/api/controller/v2/
           Status: ${{ steps['test-controller-v2'].output.code }}
           Body: ${{ steps['test-controller-v2'].output.body | dump }}
 
     - id: test-controller-v2-jt
-      name: "Teste 4: GET /api/proxy/ansible-automation-controller/api/controller/v2/job_templates/"
+      name: "Teste 4: GET /proxy/ansible-automation-controller/api/controller/v2/job_templates/"
       action: http:backstage:request
       input:
         method: GET
-        path: /api/proxy/ansible-automation-controller/api/controller/v2/job_templates/
+        path: /proxy/ansible-automation-controller/api/controller/v2/job_templates/
         headers:
           Content-Type: application/json
       continueOnError: true
@@ -109,16 +109,16 @@ spec:
       action: debug:log
       input:
         message: |
-          Teste 4 - /api/proxy/ansible-automation-controller/api/controller/v2/job_templates/
+          Teste 4 - /proxy/ansible-automation-controller/api/controller/v2/job_templates/
           Status: ${{ steps['test-controller-v2-jt'].output.code }}
           Body: ${{ steps['test-controller-v2-jt'].output.body | dump }}
 
     - id: test-v2-jt
-      name: "Teste 5: GET /api/proxy/ansible-automation-controller/api/v2/job_templates/"
+      name: "Teste 5: GET /proxy/ansible-automation-controller/api/v2/job_templates/"
       action: http:backstage:request
       input:
         method: GET
-        path: /api/proxy/ansible-automation-controller/api/v2/job_templates/
+        path: /proxy/ansible-automation-controller/api/v2/job_templates/
         headers:
           Content-Type: application/json
       continueOnError: true
@@ -128,7 +128,7 @@ spec:
       action: debug:log
       input:
         message: |
-          Teste 5 - /api/proxy/ansible-automation-controller/api/v2/job_templates/
+          Teste 5 - /proxy/ansible-automation-controller/api/v2/job_templates/
           Status: ${{ steps['test-v2-jt'].output.code }}
           Body: ${{ steps['test-v2-jt'].output.body | dump }}
 
