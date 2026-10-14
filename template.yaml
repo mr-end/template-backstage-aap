@@ -9,9 +9,9 @@ metadata:
     - aap
     - automation
     - caixa
-    - v0-0-15
+    - v0-0-16
   labels:
-    version: 0.0.15
+    version: 0.0.16
   annotations:
     backstage.io/techdocs-ref: dir:.
   links:
@@ -30,6 +30,12 @@ spec:
         utilizando o Job Template "Hello World Caixa" da organização CAIXA.
         A conexão com o AAP é gerenciada automaticamente pela plataforma.
       properties:
+        listJobTemplates:
+          title: Listar todos os Job Templates antes de executar
+          type: boolean
+          description: Exibe no log todos os Job Templates disponíveis no AAP
+          default: false
+
         verbosity:
           title: Verbosidade
           type: number
@@ -73,6 +79,7 @@ spec:
   steps:
     - id: list-job-templates
       name: Listar todos os Job Templates no AAP
+      if: ${{ parameters.listJobTemplates }}
       action: http:backstage:request
       input:
         method: GET
@@ -82,6 +89,7 @@ spec:
 
     - id: log-job-templates
       name: Exibir Job Templates encontrados
+      if: ${{ parameters.listJobTemplates }}
       action: debug:log
       input:
         message: |
@@ -123,7 +131,7 @@ spec:
     links:
       - title: Ver execução no AAP
         url: >-
-          https://aap-hub-aap.apps.cluster-bxnhf.dyn.redhatworkshops.io/#/jobs/${{ steps['launch-job-template'].output.body.id }}/details
+          https://aap-hub-aap.apps.amv6pge9oeeda93d98.eastus.aroapp.io/#/jobs/${{ steps['launch-job-template'].output.body.id }}/details
         icon: dashboard
     text:
       - title: ID do Job
