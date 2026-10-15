@@ -9,9 +9,9 @@ metadata:
     - aap
     - automation
     - caixa
-    - v0-1-6
+    - v0-1-7
   labels:
-    version: 0.1.6
+    version: 0.1.7
   annotations:
     backstage.io/techdocs-ref: dir:.
   links:
@@ -108,8 +108,8 @@ spec:
         token: ${{ environment.secrets.aapToken }}
         waitForCompletion: true
         values:
-          # O template é localizado pelo NOME no AAP
-          template: "8"
+          # O template é localizado pelo ID no AAP (também aceita o nome, se preferir)
+          template: CAIXA
           verbosity:
             id: ${{ parameters.verbosity }}
             name: verbosity
