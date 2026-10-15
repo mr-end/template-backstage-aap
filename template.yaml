@@ -122,7 +122,7 @@ spec:
         waitForCompletion: true
         values:
           # O template é localizado pelo NOME no AAP
-          template: Hello World Caixa
+          template: CAIXA
           verbosity:
             id: ${{ parameters.verbosity }}
             name: verbosity
@@ -133,7 +133,7 @@ spec:
       action: debug:log
       input:
         message: >-
-          Job Template "Hello World Caixa" finalizado.
+          Job Template "CAIXA" finalizado.
           Job ID: ${{ steps['launch-job-template'].output.data.id }}.
           Status: ${{ steps['launch-job-template'].output.data.status }}.
 
