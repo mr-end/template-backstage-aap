@@ -9,9 +9,9 @@ metadata:
     - aap
     - automation
     - caixa
-    - v0-1-3
+    - v0-1-4
   labels:
-    version: 0.1.3
+    version: 0.1.4
   annotations:
     backstage.io/techdocs-ref: dir:.
   links:
@@ -29,20 +29,7 @@ spec:
         Este template executa o playbook **linux_playbook.yml** no AAP
         utilizando o Job Template "Hello World Caixa" da organização CAIXA.
         A execução usa as suas credenciais do AAP e aguarda o término do job.
-      #required:
-      #  - token
       properties:
-        # Obtém o token OAuth do usuário logado no AAP (provider de auth "rhaap").
-        # O valor real fica em secrets.aapToken; o campo não aparece no formulário.
-        #token:
-        #  title: Token AAP
-        #  type: string
-        #  ui:field: AAPTokenField
-        #  ui:widget: hidden
-        #  ui:backstage:
-        #    review:
-        #      show: false
-
         listJobTemplates:
           title: Listar todos os Job Templates antes de executar
           type: boolean
@@ -136,6 +123,7 @@ spec:
           Job Template "CAIXA" finalizado.
           Job ID: ${{ steps['launch-job-template'].output.data.id }}.
           Status: ${{ steps['launch-job-template'].output.data.status }}.
+          Output: ${{ steps['launch-job-template'].output.data.output }}
 
   output:
     links:
