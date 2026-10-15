@@ -109,7 +109,7 @@ spec:
         waitForCompletion: true
         values:
           # O template é localizado pelo NOME no AAP
-          template: CAIXA
+          template: 8
           verbosity:
             id: ${{ parameters.verbosity }}
             name: verbosity
