@@ -29,8 +29,8 @@ spec:
         Este template executa o playbook **linux_playbook.yml** no AAP
         utilizando o Job Template "Hello World Caixa" da organização CAIXA.
         A execução usa as suas credenciais do AAP e aguarda o término do job.
-      required:
-        - token
+      #required:
+      #  - token
       properties:
         # Obtém o token OAuth do usuário logado no AAP (provider de auth "rhaap").
         # O valor real fica em secrets.aapToken; o campo não aparece no formulário.
