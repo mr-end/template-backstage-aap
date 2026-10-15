@@ -9,9 +9,9 @@ metadata:
     - aap
     - automation
     - caixa
-    - v0-1-0
+    - v0-1-1
   labels:
-    version: 0.1.0
+    version: 0.1.1
   annotations:
     backstage.io/techdocs-ref: dir:.
   links:
@@ -34,14 +34,14 @@ spec:
       properties:
         # Obtém o token OAuth do usuário logado no AAP (provider de auth "rhaap").
         # O valor real fica em secrets.aapToken; o campo não aparece no formulário.
-        token:
-          title: Token AAP
-          type: string
-          ui:field: AAPTokenField
-          ui:widget: hidden
-          ui:backstage:
-            review:
-              show: false
+        #token:
+        #  title: Token AAP
+        #  type: string
+        #  ui:field: AAPTokenField
+        #  ui:widget: hidden
+        #  ui:backstage:
+        #    review:
+        #      show: false
 
         listJobTemplates:
           title: Listar todos os Job Templates antes de executar
@@ -118,7 +118,7 @@ spec:
       name: Executar Job Template no AAP
       action: rhaap:launch-job-template
       input:
-        token: ${{ secrets.aapToken }}
+        token: ${{ environment.secrets.aapToken }}
         waitForCompletion: true
         values:
           # O template é localizado pelo NOME no AAP
