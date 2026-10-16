@@ -11,9 +11,9 @@ metadata:
     - aap
     - automation
     - httpd
-    - v0-1-0
+    - v0-1-1
   labels:
-    version: 0.1.0
+    version: 0.1.1
   annotations:
     backstage.io/techdocs-ref: dir:.
   links:
@@ -41,17 +41,6 @@ spec:
             Nome do projeto/namespace no OpenShift onde o httpd será
             implantado (letras minúsculas, números e hífens)
           pattern: '^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'
-
-    - title: Confirmação
-      description: Revise os dados antes de executar a automação.
-      properties:
-        confirmExecution:
-          title: Confirmo que desejo realizar o deploy do httpd
-          type: boolean
-          default: false
-          ui:widget: checkbox
-      required:
-        - confirmExecution
 
   steps:
 

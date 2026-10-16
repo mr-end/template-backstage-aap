@@ -11,9 +11,9 @@ metadata:
     - aap
     - automation
     - openshift
-    - v0-2-1
+    - v0-2-3
   labels:
-    version: 0.2.1
+    version: 0.2.3
   annotations:
     backstage.io/techdocs-ref: dir:.
   links:
@@ -51,17 +51,6 @@ spec:
           title: Descrição do Projeto
           type: string
           description: Descrição do propósito do projeto (opcional)
-
-    - title: Confirmação
-      description: Revise os dados antes de executar a automação.
-      properties:
-        confirmExecution:
-          title: Confirmo que desejo criar este projeto no OpenShift
-          type: boolean
-          default: false
-          ui:widget: checkbox
-      required:
-        - confirmExecution
 
   steps:
 
