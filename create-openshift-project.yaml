@@ -1,0 +1,156 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: create-openshift-project-aap
+  title: Create Openshift Project
+  description: >-
+    Cria um novo projeto no OpenShift executando o playbook CreateProject
+    (projeto Ansible-Examples) no Ansible Automation Platform
+  tags:
+    - ansible
+    - aap
+    - automation
+    - openshift
+    - v0-1-1
+  labels:
+    version: 0.1.1
+  annotations:
+    backstage.io/techdocs-ref: dir:.
+  links:
+    - title: Ansible Automation Platform
+      url: https://aap-hub-aap.apps.cluster-bxnhf.dyn.redhatworkshops.io/
+      icon: dashboard
+spec:
+  type: automation
+  owner: team-caixa
+  lifecycle: production
+
+  parameters:
+    - title: Criar Projeto no OpenShift
+      description: >
+        Este template executa o playbook **CreateProject** (projeto
+        Ansible-Examples) no AAP para criar um novo projeto no OpenShift.
+        A execução usa suas credenciais do AAP e aguarda o término do job.
+      required:
+        - projectName
+      properties:
+        projectName:
+          title: Nome do Projeto
+          type: string
+          description: >-
+            Nome do projeto/namespace a ser criado no OpenShift (letras
+            minúsculas, números e hífens)
+          pattern: '^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'
+
+        displayName:
+          title: Nome de Exibição
+          type: string
+          description: Nome amigável exibido no console do OpenShift (opcional)
+
+        projectDescription:
+          title: Descrição do Projeto
+          type: string
+          description: Descrição do propósito do projeto (opcional)
+
+        listJobTemplates:
+          title: Listar todos os Job Templates antes de executar
+          type: boolean
+          description: Exibe no log todos os Job Templates disponíveis no AAP
+          default: false
+
+        verbosity:
+          title: Verbosidade
+          type: number
+          description: >-
+            Nível de verbosidade da execução (requer "Prompt on launch" de
+            Verbosity no Job Template)
+          default: 0
+          enum:
+            - 0
+            - 1
+            - 2
+            - 3
+            - 4
+          enumNames:
+            - "0 (Normal)"
+            - "1 (Verbose)"
+            - "2 (More Verbose)"
+            - "3 (Debug)"
+            - "4 (Connection Debug)"
+          ui:widget: select
+
+    - title: Confirmação
+      description: Revise os dados antes de executar a automação.
+      properties:
+        confirmExecution:
+          title: Confirmo que desejo criar este projeto no OpenShift
+          type: boolean
+          default: false
+          ui:widget: checkbox
+      required:
+        - confirmExecution
+
+  steps:
+    - id: list-job-templates
+      name: Listar todos os Job Templates no AAP
+      if: ${{ parameters.listJobTemplates }}
+      action: http:backstage:request
+      input:
+        method: GET
+        path: /proxy/ansible-automation-controller/api/controller/v2/job_templates/
+
+    - id: log-job-templates
+      name: Exibir Job Templates encontrados
+      if: ${{ parameters.listJobTemplates }}
+      action: debug:log
+      input:
+        message: |
+          Job Templates encontrados no AAP (total: ${{ steps['list-job-templates'].output.body.count }}):
+          ${{ steps['list-job-templates'].output.body.results | dump }}
+
+    # Execução síncrona: a ação lança o job, faz polling do status a cada 5s
+    # (máximo 1h) e só termina quando o job termina. Ao final, registra no log
+    # da task as mensagens de ansible.builtin.debug do playbook.
+    # Se o job não terminar como "successful", este step falha.
+    # Se a task for cancelada no Developer Hub, o job é cancelado no AAP.
+    - id: launch-job-template
+      name: Executar Job Template no AAP
+      action: rhaap:launch-job-template
+      input:
+        token: ${{ environment.secrets.aapToken }}
+        waitForCompletion: true
+        values:
+          # Job Template "CreateProject" do projeto "Ansible-Examples" no AAP
+          # (localizado pelo nome; também aceita o ID numérico, se preferir)
+          template: CreateProject
+          verbosity:
+            id: ${{ parameters.verbosity }}
+            name: verbosity
+          # Variáveis esperadas pelo playbook CreateProject
+          extraVariables: |-
+            project_name: ${{ parameters.projectName }}
+            project_display_name: ${{ parameters.displayName }}
+            project_description: ${{ parameters.projectDescription }}
+
+    - id: log-output
+      name: Registrar resultado da execução
+      action: debug:log
+      input:
+        message: >-
+          Job Template "CreateProject" finalizado.
+          Job ID: ${{ steps['launch-job-template'].output.data.id }}.
+          Status: ${{ steps['launch-job-template'].output.data.status }}.
+          Output: ${{ steps['launch-job-template'].output.data.output }}
+
+  output:
+    links:
+      - title: Ver execução no AAP
+        url: ${{ steps['launch-job-template'].output.data.url }}
+        icon: dashboard
+    text:
+      - title: Projeto Criado
+        content: "${{ parameters.projectName }}"
+      - title: ID do Job
+        content: "${{ steps['launch-job-template'].output.data.id }}"
+      - title: Status
+        content: "${{ steps['launch-job-template'].output.data.status }}"
