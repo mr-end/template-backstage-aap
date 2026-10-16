@@ -9,9 +9,9 @@ metadata:
     - aap
     - automation
     - caixa
-    - v0-1-7
+    - v0-1-8
   labels:
-    version: 0.1.7
+    version: 0.1.8
   annotations:
     backstage.io/techdocs-ref: dir:.
   links:
@@ -20,7 +20,7 @@ metadata:
       icon: dashboard
 spec:
   type: automation
-  owner: team-caixa
+  owner: user:default/victorfim
   lifecycle: production
 
   parameters:
