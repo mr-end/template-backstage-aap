@@ -1,0 +1,22 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: ${{ values.projectName }}
+  description: ${{ values.projectDescription }}
+  annotations:
+    backstage.io/techdocs-ref: dir:.
+spec:
+  type: service
+  lifecycle: production
+  owner: team-caixa
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: ${{ values.projectName }}-httpd
+  description: Deploy do Httpd no projeto ${{ values.projectName }}
+spec:
+  type: service
+  lifecycle: production
+  owner: team-caixa
+  subcomponentOf: component:${{ values.projectName }}

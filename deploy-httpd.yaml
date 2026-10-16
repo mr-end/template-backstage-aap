@@ -11,9 +11,9 @@ metadata:
     - aap
     - automation
     - httpd
-    - v0-1-1
+    - v0-2-0
   labels:
-    version: 0.1.1
+    version: 0.2.0
   annotations:
     backstage.io/techdocs-ref: dir:.
   links:
@@ -41,6 +41,18 @@ spec:
             Nome do projeto/namespace no OpenShift onde o httpd será
             implantado (letras minúsculas, números e hífens)
           pattern: '^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'
+
+        githubOwner:
+          title: Organização/Owner no GitHub
+          type: string
+          description: >-
+            Organização/owner do repositório no GitHub (criado junto com o
+            projeto) cujo catalog-info.yaml será atualizado após o deploy
+
+        projectDescription:
+          title: Descrição do Projeto
+          type: string
+          description: Descrição do propósito do projeto (opcional)
 
   steps:
 
@@ -73,11 +85,51 @@ spec:
           Status: ${{ steps['launch-job-template'].output.data.status }}.
           Output: ${{ steps['launch-job-template'].output.data.output }}
 
+    # Os 2 steps abaixo só executam se "launch-job-template" tiver sucesso
+    # (o Scaffolder interrompe a execução dos steps seguintes em caso de
+    # falha). Geram a versão atualizada do catalog-info.yaml (com o novo
+    # componente do Httpd) e abrem um Pull Request no repositório do
+    # projeto para aplicar essa atualização.
+    - id: fetch-catalog-update
+      name: Gerar catalog-info.yaml atualizado
+      action: fetch:template
+      input:
+        url: ./skeleton-httpd
+        values:
+          projectName: ${{ parameters.projectName }}
+          projectDescription: ${{ parameters.projectDescription }}
+
+    # OBS: usa um nome de branch fixo. Se o template for executado mais de
+    # uma vez para o mesmo projeto, pode ser necessário remover/mesclar o PR
+    # anterior antes de rodar novamente (a branch já existiria).
+    - id: update-catalog-pr
+      name: Abrir PR com atualização do catalog-info.yaml
+      action: publish:github:pull-request
+      input:
+        repoUrl: github.com?owner=${{ parameters.githubOwner }}&repo=${{ parameters.projectName }}
+        branchName: update-catalog-info-httpd
+        title: "Atualiza catalog-info.yaml com deploy do Httpd"
+        description: >-
+          Atualização automática do catalog-info.yaml após o deploy do
+          Httpd no projeto ${{ parameters.projectName }}, via Backstage.
+
+    - id: log-update-catalog-pr
+      name: Registrar PR aberto
+      action: debug:log
+      input:
+        message: >-
+          Pull Request aberto no repositório
+          "${{ parameters.githubOwner }}/${{ parameters.projectName }}":
+          ${{ steps['update-catalog-pr'].output.remoteUrl }}
+
   output:
     links:
       - title: Ver execução no AAP
         url: ${{ steps['launch-job-template'].output.data.url }}
         icon: dashboard
+      - title: Ver Pull Request do catalog-info.yaml
+        url: ${{ steps['update-catalog-pr'].output.remoteUrl }}
+        icon: github
     text:
       - title: Projeto
         content: "${{ parameters.projectName }}"
