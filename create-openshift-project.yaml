@@ -11,9 +11,9 @@ metadata:
     - aap
     - automation
     - openshift
-    - v0-4-2
+    - v0-4-3
   labels:
-    version: 0.4.2
+    version: 0.4.3
   annotations:
     backstage.io/techdocs-ref: dir:.
   links:
@@ -22,7 +22,7 @@ metadata:
       icon: dashboard
 spec:
   type: automation
-  owner: team-caixa
+  owner: user:default/victorfim
   lifecycle: production
 
   parameters:

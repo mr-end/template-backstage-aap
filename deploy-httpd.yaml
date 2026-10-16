@@ -11,9 +11,9 @@ metadata:
     - aap
     - automation
     - httpd
-    - v0-2-0
+    - v0-2-1
   labels:
-    version: 0.2.0
+    version: 0.2.1
   annotations:
     backstage.io/techdocs-ref: dir:.
   links:
@@ -22,7 +22,7 @@ metadata:
       icon: dashboard
 spec:
   type: automation
-  owner: team-caixa
+  owner: user:default/victorfim
   lifecycle: production
 
   parameters:
