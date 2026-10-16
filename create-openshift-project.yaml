@@ -11,9 +11,9 @@ metadata:
     - aap
     - automation
     - openshift
-    - v0-1-2
+    - v0-1-3
   labels:
-    version: 0.1.2
+    version: 0.1.3
   annotations:
     backstage.io/techdocs-ref: dir:.
   links:
@@ -80,9 +80,6 @@ spec:
           # Job Template "CreateProject" do projeto "Ansible-Examples" no AAP
           # (localizado pelo nome; também aceita o ID numérico, se preferir)
           template: CreateProject
-          verbosity:
-            id: ${{ parameters.verbosity }}
-            name: verbosity
           # Variáveis esperadas pelo playbook CreateProject
           extraVariables: |-
             project_name: ${{ parameters.projectName }}
