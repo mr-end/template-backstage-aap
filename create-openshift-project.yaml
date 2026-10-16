@@ -11,9 +11,9 @@ metadata:
     - aap
     - automation
     - openshift
-    - v0-2-3
+    - v0-4-1
   labels:
-    version: 0.2.3
+    version: 0.4.1
   annotations:
     backstage.io/techdocs-ref: dir:.
   links:
@@ -52,6 +52,30 @@ spec:
           type: string
           description: Descrição do propósito do projeto (opcional)
 
+        deployHttpd:
+          title: Realizar o deploy do Httpd após criar o projeto
+          type: boolean
+          description: >-
+            Se marcado, dispara automaticamente o template DeployHttpd
+            no novo projeto após a criação. Se desmarcado, apenas o
+            projeto é criado.
+          default: false
+
+    - title: Repositório
+      description: >
+        Após a criação do projeto no AAP, um repositório é criado no GitHub
+        (com o mesmo nome do projeto) e registrado automaticamente no
+        Catalog do Backstage.
+      required:
+        - githubOwner
+      properties:
+        githubOwner:
+          title: Organização/Owner no GitHub
+          type: string
+          description: >-
+            Organização ou usuário do GitHub onde o repositório será criado.
+            O nome do repositório será o mesmo nome do projeto.
+
   steps:
 
     # Execução síncrona: a ação lança o job, faz polling do status a cada 5s
@@ -85,12 +109,44 @@ spec:
           Status: ${{ steps['launch-job-template'].output.data.status }}.
           Output: ${{ steps['launch-job-template'].output.data.output }}
 
-    # Só é executado se o step "launch-job-template" terminar com sucesso
-    # (o Scaffolder interrompe a execução dos steps seguintes em caso de falha).
+    # Os 3 steps abaixo só executam se "launch-job-template" tiver sucesso
+    # (o Scaffolder interrompe a execução dos steps seguintes em caso de
+    # falha). Criam o conteúdo base do repositório, publicam no GitHub e
+    # registram o catalog-info.yaml resultante no Catalog do Backstage.
+    - id: fetch-skeleton
+      name: Buscar arquivos base do repositório
+      action: fetch:template
+      input:
+        url: ./skeleton
+        values:
+          projectName: ${{ parameters.projectName }}
+          projectDescription: ${{ parameters.projectDescription }}
+
+    - id: publish-github
+      name: Publicar repositório no GitHub
+      action: publish:github
+      input:
+        description: >-
+          ${{ parameters.projectDescription or ('Projeto OpenShift ' + parameters.projectName) }}
+        # Nome do repositório é sempre o nome do projeto (não é solicitado ao usuário)
+        repoUrl: github.com?owner=${{ parameters.githubOwner }}&repo=${{ parameters.projectName }}
+        defaultBranch: main
+
+    - id: register-catalog
+      name: Registrar no Catalog
+      action: catalog:register
+      input:
+        repoContentsUrl: ${{ steps['publish-github'].output.repoContentsUrl }}
+        catalogInfoPath: /catalog-info.yaml
+
+    # Só é executado se o usuário marcou "deployHttpd" E o step
+    # "launch-job-template" terminou com sucesso (o Scaffolder interrompe a
+    # execução dos steps seguintes em caso de falha).
     # Dispara o template "DeployHttpd" como uma nova task independente,
     # passando o nome do projeto recém-criado.
     - id: trigger-deploy-httpd
       name: Deploy DeployHttpd
+      if: ${{ parameters.deployHttpd }}
       action: http:backstage:request
       input:
         method: POST
@@ -104,6 +160,7 @@ spec:
 
     - id: log-trigger-deploy-httpd
       name: Registrar disparo do DeployHttpd
+      if: ${{ parameters.deployHttpd }}
       action: debug:log
       input:
         message: >-
@@ -116,8 +173,15 @@ spec:
       - title: Ver execução no AAP
         url: ${{ steps['launch-job-template'].output.data.url }}
         icon: dashboard
+      - title: Repositório no GitHub
+        url: ${{ steps['publish-github'].output.remoteUrl }}
+        icon: github
+      - title: Abrir no Catalog
+        icon: catalog
+        entityRef: ${{ steps['register-catalog'].output.entityRef }}
       - title: Ver task do DeployHttpd
-        url: /create/tasks/${{ steps['trigger-deploy-httpd'].output.body.id }}
+        url: >-
+          ${{ parameters.deployHttpd and ('/create/tasks/' + steps['trigger-deploy-httpd'].output.body.id) }}
         icon: dashboard
     text:
       - title: Projeto Criado
@@ -127,4 +191,4 @@ spec:
       - title: Status
         content: "${{ steps['launch-job-template'].output.data.status }}"
       - title: Task ID do DeployHttpd
-        content: "${{ steps['trigger-deploy-httpd'].output.body.id }}"
+        content: "${{ parameters.deployHttpd and steps['trigger-deploy-httpd'].output.body.id }}"
