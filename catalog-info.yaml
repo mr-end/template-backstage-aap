@@ -8,3 +8,4 @@ spec:
   targets:
     - ./template.yaml
     - ./create-openshift-project.yaml
+    - ./deploy-httpd.yaml
