@@ -11,9 +11,9 @@ metadata:
     - aap
     - automation
     - openshift
-    - v0-1-1
+    - v0-1-2
   labels:
-    version: 0.1.1
+    version: 0.1.2
   annotations:
     backstage.io/techdocs-ref: dir:.
   links:
@@ -52,33 +52,6 @@ spec:
           type: string
           description: Descrição do propósito do projeto (opcional)
 
-        listJobTemplates:
-          title: Listar todos os Job Templates antes de executar
-          type: boolean
-          description: Exibe no log todos os Job Templates disponíveis no AAP
-          default: false
-
-        verbosity:
-          title: Verbosidade
-          type: number
-          description: >-
-            Nível de verbosidade da execução (requer "Prompt on launch" de
-            Verbosity no Job Template)
-          default: 0
-          enum:
-            - 0
-            - 1
-            - 2
-            - 3
-            - 4
-          enumNames:
-            - "0 (Normal)"
-            - "1 (Verbose)"
-            - "2 (More Verbose)"
-            - "3 (Debug)"
-            - "4 (Connection Debug)"
-          ui:widget: select
-
     - title: Confirmação
       description: Revise os dados antes de executar a automação.
       properties:
@@ -91,22 +64,6 @@ spec:
         - confirmExecution
 
   steps:
-    - id: list-job-templates
-      name: Listar todos os Job Templates no AAP
-      if: ${{ parameters.listJobTemplates }}
-      action: http:backstage:request
-      input:
-        method: GET
-        path: /proxy/ansible-automation-controller/api/controller/v2/job_templates/
-
-    - id: log-job-templates
-      name: Exibir Job Templates encontrados
-      if: ${{ parameters.listJobTemplates }}
-      action: debug:log
-      input:
-        message: |
-          Job Templates encontrados no AAP (total: ${{ steps['list-job-templates'].output.body.count }}):
-          ${{ steps['list-job-templates'].output.body.results | dump }}
 
     # Execução síncrona: a ação lança o job, faz polling do status a cada 5s
     # (máximo 1h) e só termina quando o job termina. Ao final, registra no log
