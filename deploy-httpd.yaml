@@ -61,7 +61,7 @@ spec:
     # Se o job não terminar como "successful", este step falha.
     # Se a task for cancelada no Developer Hub, o job é cancelado no AAP.
     - id: launch-job-template
-      name: Executar Job Template no AAP
+      name: Deploy Httpd
       action: rhaap:launch-job-template
       input:
         token: ${{ environment.secrets.aapToken }}
