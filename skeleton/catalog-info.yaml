@@ -1,11 +1,16 @@
 apiVersion: backstage.io/v1alpha1
-kind: Component
+kind: System
 metadata:
   name: ${{ values.projectName }}
   description: ${{ values.projectDescription }}
   annotations:
-    backstage.io/techdocs-ref: dir:.
+    # Dados usados pelo plugin de Kubernetes do RHDH. Sem "label-selector"
+    # aqui de propósito: ao abrir a aba Kubernetes a partir do System,
+    # a busca cobre o namespace inteiro (todos os componentes nele).
+    # OBS: a aba de Kubernetes é renderizada por padrão para entidades do
+    # tipo Component. Se não aparecer na página do System, isso é esperado
+    # na configuração padrão do RHDH.
+    backstage.io/kubernetes-namespace: ${{ values.projectName }}
+    backstage.io/kubernetes-cluster: aro-lab
 spec:
-  type: service
-  lifecycle: production
   owner: user:default/victorfim

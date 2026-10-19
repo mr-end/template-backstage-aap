@@ -1,22 +1,19 @@
 apiVersion: backstage.io/v1alpha1
 kind: Component
 metadata:
-  name: ${{ values.projectName }}
-  description: ${{ values.projectDescription }}
-  annotations:
-    backstage.io/techdocs-ref: dir:.
-spec:
-  type: service
-  lifecycle: production
-  owner: user:default/victorfim
----
-apiVersion: backstage.io/v1alpha1
-kind: Component
-metadata:
   name: ${{ values.projectName }}-httpd
   description: Deploy do Httpd no projeto ${{ values.projectName }}
+  annotations:
+    # Dados usados pelo plugin de Kubernetes do RHDH para localizar os
+    # recursos (Deployment, Pod, Service, Route) deste componente no
+    # cluster. O label-selector abaixo assume que o playbook DeployHttpd
+    # aplica o label "app=httpd" aos recursos criados — ajuste se os
+    # labels reais forem diferentes.
+    backstage.io/kubernetes-namespace: ${{ values.projectName }}
+    backstage.io/kubernetes-cluster: aro-lab
+    backstage.io/kubernetes-label-selector: ${{ values.k8sLabelSelector }}
 spec:
   type: service
   lifecycle: production
   owner: user:default/victorfim
-  subcomponentOf: component:${{ values.projectName }}
+  system: ${{ values.projectName }}

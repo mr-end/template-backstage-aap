@@ -11,9 +11,9 @@ metadata:
     - aap
     - automation
     - httpd
-    - v0-2-1
+    - v0-3-0
   labels:
-    version: 0.2.1
+    version: 0.3.0
   annotations:
     backstage.io/techdocs-ref: dir:.
   links:
@@ -53,6 +53,15 @@ spec:
           title: Descrição do Projeto
           type: string
           description: Descrição do propósito do projeto (opcional)
+
+        k8sLabelSelector:
+          title: Label Selector do Kubernetes (avançado)
+          type: string
+          description: >-
+            Selector usado pelo plugin de Kubernetes do RHDH para localizar
+            os recursos do httpd no cluster (ex: "app=httpd"). Ajuste se o
+            playbook aplicar labels diferentes aos recursos criados.
+          default: app=httpd
 
   steps:
 
@@ -98,6 +107,11 @@ spec:
         values:
           projectName: ${{ parameters.projectName }}
           projectDescription: ${{ parameters.projectDescription }}
+          # Fallback garante um valor mesmo quando a task é disparada via
+          # API (ex: pelo template create-openshift-project) sem passar
+          # esse parâmetro explicitamente — o default do schema não é
+          # aplicado automaticamente nesse caso.
+          k8sLabelSelector: ${{ parameters.k8sLabelSelector or 'app=httpd' }}
 
     # OBS: usa um nome de branch fixo. Se o template for executado mais de
     # uma vez para o mesmo projeto, pode ser necessário remover/mesclar o PR
