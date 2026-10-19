@@ -4,12 +4,9 @@ metadata:
   name: ${{ values.projectName }}
   description: ${{ values.projectDescription }}
   annotations:
-    # Dados usados pelo plugin de Kubernetes do RHDH. Sem "label-selector"
-    # aqui de propósito: ao abrir a aba Kubernetes a partir do System,
-    # a busca cobre o namespace inteiro (todos os componentes nele).
-    # OBS: a aba de Kubernetes é renderizada por padrão para entidades do
-    # tipo Component. Se não aparecer na página do System, isso é esperado
-    # na configuração padrão do RHDH.
+    # Namespace/cluster onde os componentes deste System vivem.
+    # A aba Kubernetes no RHDH aparece de forma confiável no Component
+    # (httpd), não necessariamente na página do System.
     backstage.io/kubernetes-namespace: ${{ values.projectName }}
     backstage.io/kubernetes-cluster: aro-lab
 spec:

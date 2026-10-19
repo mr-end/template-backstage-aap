@@ -11,9 +11,9 @@ metadata:
     - aap
     - automation
     - httpd
-    - v0-3-0
+    - v0-3-1
   labels:
-    version: 0.3.0
+    version: 0.3.1
   annotations:
     backstage.io/techdocs-ref: dir:.
   links:

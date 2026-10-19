@@ -1,14 +1,28 @@
+# Mantém o System do projeto E adiciona o Component do Httpd.
+# Importante: este arquivo substitui o catalog-info.yaml inteiro no PR —
+# se omitíssemos o System, ele desapareceria do Catalog após o merge.
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata:
+  name: ${{ values.projectName }}
+  description: ${{ values.projectDescription }}
+  annotations:
+    backstage.io/kubernetes-namespace: ${{ values.projectName }}
+    backstage.io/kubernetes-cluster: aro-lab
+spec:
+  owner: user:default/victorfim
+---
 apiVersion: backstage.io/v1alpha1
 kind: Component
 metadata:
   name: ${{ values.projectName }}-httpd
   description: Deploy do Httpd no projeto ${{ values.projectName }}
   annotations:
-    # Dados usados pelo plugin de Kubernetes do RHDH para localizar os
-    # recursos (Deployment, Pod, Service, Route) deste componente no
-    # cluster. O label-selector abaixo assume que o playbook DeployHttpd
-    # aplica o label "app=httpd" aos recursos criados — ajuste se os
-    # labels reais forem diferentes.
+    # Plugin Kubernetes do RHDH: busca recursos no namespace do projeto,
+    # no cluster "aro-lab", filtrando pelo label-selector abaixo.
+    # Confirme no OpenShift que os Pods/Deployments do httpd têm esse label
+    # (ex: oc get pods -n <projeto> --show-labels).
+    backstage.io/kubernetes-id: ${{ values.projectName }}-httpd
     backstage.io/kubernetes-namespace: ${{ values.projectName }}
     backstage.io/kubernetes-cluster: aro-lab
     backstage.io/kubernetes-label-selector: ${{ values.k8sLabelSelector }}
