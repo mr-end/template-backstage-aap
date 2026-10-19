@@ -4,9 +4,10 @@ metadata:
   name: ${{ values.projectName }}
   description: ${{ values.projectDescription }}
   annotations:
-    # Namespace/cluster onde os componentes deste System vivem.
-    # A aba Kubernetes no RHDH aparece de forma confiável no Component
-    # (httpd), não necessariamente na página do System.
+    # A aba Kubernetes do RHDH exige kubernetes-id (ou um label-selector).
+    # O valor é o nome do projeto; os objetos no cluster precisam ter o
+    # label backstage.io/kubernetes-id=<nome-do-projeto> para aparecerem.
+    backstage.io/kubernetes-id: ${{ values.projectName }}
     backstage.io/kubernetes-namespace: ${{ values.projectName }}
     backstage.io/kubernetes-cluster: aro-lab
 spec:

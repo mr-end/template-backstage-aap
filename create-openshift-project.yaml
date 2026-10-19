@@ -11,9 +11,9 @@ metadata:
     - aap
     - automation
     - openshift
-    - v0-5-1
+    - v0-5-2
   labels:
-    version: 0.5.1
+    version: 0.5.2
   annotations:
     backstage.io/techdocs-ref: dir:.
   links:

@@ -7,6 +7,7 @@ metadata:
   name: ${{ values.projectName }}
   description: ${{ values.projectDescription }}
   annotations:
+    backstage.io/kubernetes-id: ${{ values.projectName }}
     backstage.io/kubernetes-namespace: ${{ values.projectName }}
     backstage.io/kubernetes-cluster: aro-lab
 spec:
