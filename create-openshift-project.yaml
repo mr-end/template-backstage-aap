@@ -11,9 +11,9 @@ metadata:
     - aap
     - automation
     - openshift
-    - v0-7-1
+    - v0-7-2
   labels:
-    version: 0.7.1
+    version: 0.7.2
   annotations:
     backstage.io/techdocs-ref: dir:.
   links:
@@ -62,15 +62,6 @@ spec:
             após a criação do projeto e do repositório. O DeployHttpd gera
             os manifests e registra a Application no Argo CD.
           default: false
-
-        argoInstance:
-          title: Instância do Argo CD
-          type: string
-          description: >-
-            Nome da instância em argocd.appLocatorMethods no app-config do
-            RHDH. Passado ao DeployHttpd quando o disparo estiver marcado
-            (defaults do schema não são aplicados via API).
-          default: default
 
     - title: Repositório
       description: >
@@ -157,7 +148,7 @@ spec:
             projectName: ${{ parameters.projectName }}
             githubOwner: ${{ parameters.githubOwner }}
             projectDescription: ${{ parameters.projectDescription }}
-            argoInstance: ${{ parameters.argoInstance or 'default' }}
+            argoProject: default
             k8sLabelSelector: app=httpd
 
     - id: log-trigger-deploy-httpd
