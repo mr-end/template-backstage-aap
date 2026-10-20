@@ -4,35 +4,33 @@ metadata:
   name: deploy-httpd-aap
   title: DeployHttpd
   description: >-
-    Executa o playbook DeployHttpd (projeto Ansible-Examples) no Ansible
-    Automation Platform
+    Gera os manifests do Httpd no repositório do projeto para o Argo CD
+    sincronizar (GitOps). Não chama a API do Argo CD.
   tags:
-    - ansible
-    - aap
-    - automation
+    - argocd
+    - gitops
     - httpd
-    - v0-3-2
+    - openshift
+    - v0-4-1
   labels:
-    version: 0.3.2
+    version: 0.4.1
   annotations:
     backstage.io/techdocs-ref: dir:.
-  links:
-    - title: Ansible Automation Platform
-      url: https://aap-hub-aap.apps.cluster-bxnhf.dyn.redhatworkshops.io/
-      icon: dashboard
 spec:
-  type: automation
+  type: service
   owner: user:default/victorfim
   lifecycle: production
 
   parameters:
-    - title: Deploy do Httpd
+    - title: Deploy do Httpd (GitOps)
       description: >
-        Este template executa o playbook **DeployHttpd** (projeto
-        Ansible-Examples) no AAP para realizar o deploy do httpd.
-        A execução usa suas credenciais do AAP e aguarda o término do job.
+        Este template gera os manifests Kubernetes/OpenShift do Httpd no
+        repositório do projeto (path `manifests/httpd`). O Argo CD já lê
+        os repositórios e sincroniza o deploy — este template não dispara
+        nada no Argo CD.
       required:
         - projectName
+        - githubOwner
       properties:
         projectName:
           title: Nome do Projeto
@@ -47,7 +45,8 @@ spec:
           type: string
           description: >-
             Organização/owner do repositório no GitHub (criado junto com o
-            projeto) cujo catalog-info.yaml será atualizado após o deploy
+            projeto) onde os manifests e o catalog-info.yaml serão
+            publicados
 
         projectDescription:
           title: Descrição do Projeto
@@ -59,95 +58,59 @@ spec:
           type: string
           description: >-
             Selector usado pelo plugin de Kubernetes do RHDH para localizar
-            os recursos do httpd no cluster (ex: "app=httpd"). Ajuste se o
-            playbook aplicar labels diferentes aos recursos criados.
+            os recursos do httpd no cluster (ex: "app=httpd").
           default: app=httpd
 
   steps:
 
-    # Execução síncrona: a ação lança o job, faz polling do status a cada 5s
-    # (máximo 1h) e só termina quando o job termina. Ao final, registra no log
-    # da task as mensagens de ansible.builtin.debug do playbook.
-    # Se o job não terminar como "successful", este step falha.
-    # Se a task for cancelada no Developer Hub, o job é cancelado no AAP.
-    - id: launch-job-template
-      name: Deploy Httpd
-      action: rhaap:launch-job-template
-      input:
-        token: ${{ environment.secrets.aapToken }}
-        waitForCompletion: true
-        values:
-          # Job Template "DeployHttpd" do projeto "Ansible-Examples" no AAP
-          # (localizado pelo nome; também aceita o ID numérico, se preferir)
-          template: DeployHttpd
-          # Variável esperada pelo playbook DeployHttpd
-          extraVariables: |-
-            project_name: ${{ parameters.projectName }}
-
-    - id: log-output
-      name: Registrar resultado da execução
-      action: debug:log
-      input:
-        message: >-
-          Job Template "DeployHttpd" finalizado.
-          Job ID: ${{ steps['launch-job-template'].output.data.id }}.
-          Status: ${{ steps['launch-job-template'].output.data.status }}.
-          Output: ${{ steps['launch-job-template'].output.data.output }}
-
-    # Os 2 steps abaixo só executam se "launch-job-template" tiver sucesso
-    # (o Scaffolder interrompe a execução dos steps seguintes em caso de
-    # falha). Geram a versão atualizada do catalog-info.yaml (com o novo
-    # componente do Httpd) e abrem um Pull Request no repositório do
-    # projeto para aplicar essa atualização.
-    - id: fetch-catalog-update
-      name: Gerar catalog-info.yaml atualizado
+    # Gera catalog-info.yaml (System + Component Httpd) e os manifests
+    # em manifests/httpd/ (Deployment, Service, Route, Kustomization).
+    - id: fetch-httpd
+      name: Gerar manifests Httpd e catalog-info
       action: fetch:template
       input:
         url: ./skeleton-httpd
         values:
           projectName: ${{ parameters.projectName }}
           projectDescription: ${{ parameters.projectDescription }}
-          # Fallback garante um valor mesmo quando a task é disparada via
-          # API (ex: pelo template create-openshift-project) sem passar
-          # esse parâmetro explicitamente — o default do schema não é
-          # aplicado automaticamente nesse caso.
           k8sLabelSelector: ${{ parameters.k8sLabelSelector or 'app=httpd' }}
 
+    # Publica via PR. Após o merge na branch principal, o Argo CD
+    # (que já observa o repositório) sincroniza os manifests.
     # OBS: usa um nome de branch fixo. Se o template for executado mais de
     # uma vez para o mesmo projeto, pode ser necessário remover/mesclar o PR
-    # anterior antes de rodar novamente (a branch já existiria).
-    - id: update-catalog-pr
-      name: Abrir PR com atualização do catalog-info.yaml
+    # anterior antes de rodar novamente.
+    - id: publish-httpd-pr
+      name: Abrir PR com manifests e catalog-info
       action: publish:github:pull-request
       input:
         repoUrl: github.com?owner=${{ parameters.githubOwner }}&repo=${{ parameters.projectName }}
-        branchName: update-catalog-info-httpd
-        title: "Atualiza catalog-info.yaml com deploy do Httpd"
+        branchName: deploy-httpd-gitops
+        title: "Adiciona manifests Httpd (GitOps)"
         description: >-
-          Atualização automática do catalog-info.yaml após o deploy do
-          Httpd no projeto ${{ parameters.projectName }}, via Backstage.
+          Adiciona manifests em manifests/httpd/ e atualiza o
+          catalog-info.yaml com o Component do Httpd. Após o merge,
+          o Argo CD sincroniza o deploy no namespace
+          ${{ parameters.projectName }}.
 
-    - id: log-update-catalog-pr
+    - id: log-publish-httpd-pr
       name: Registrar PR aberto
       action: debug:log
       input:
         message: >-
           Pull Request aberto no repositório
           "${{ parameters.githubOwner }}/${{ parameters.projectName }}":
-          ${{ steps['update-catalog-pr'].output.remoteUrl }}
+          ${{ steps['publish-httpd-pr'].output.remoteUrl }}.
+          Manifests em manifests/httpd — o Argo CD sincroniza a partir do
+          repositório (nenhuma chamada à API do Argo CD).
 
   output:
     links:
-      - title: Ver execução no AAP
-        url: ${{ steps['launch-job-template'].output.data.url }}
-        icon: dashboard
-      - title: Ver Pull Request do catalog-info.yaml
-        url: ${{ steps['update-catalog-pr'].output.remoteUrl }}
+      - title: Ver Pull Request
+        url: ${{ steps['publish-httpd-pr'].output.remoteUrl }}
         icon: github
     text:
       - title: Projeto
         content: "${{ parameters.projectName }}"
-      - title: ID do Job
-        content: "${{ steps['launch-job-template'].output.data.id }}"
-      - title: Status
-        content: "${{ steps['launch-job-template'].output.data.status }}"
+      - title: Path dos manifests
+        content: manifests/httpd

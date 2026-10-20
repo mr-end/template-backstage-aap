@@ -4,16 +4,17 @@ metadata:
   name: create-openshift-project-aap
   title: Create Openshift Project
   description: >-
-    Cria um novo projeto no OpenShift executando o playbook CreateProject
-    (projeto Ansible-Examples) no Ansible Automation Platform
+    Cria um novo projeto no OpenShift via AAP (CreateProject) e, opcionalmente,
+    publica manifests do Httpd no repositório para o Argo CD sincronizar
   tags:
     - ansible
     - aap
-    - automation
+    - argocd
+    - gitops
     - openshift
-    - v0-5-2
+    - v0-6-1
   labels:
-    version: 0.5.2
+    version: 0.6.1
   annotations:
     backstage.io/techdocs-ref: dir:.
   links:
@@ -31,6 +32,8 @@ spec:
         Este template executa o playbook **CreateProject** (projeto
         Ansible-Examples) no AAP para criar um novo projeto no OpenShift.
         A execução usa suas credenciais do AAP e aguarda o término do job.
+        O deploy do Httpd, se solicitado, é apenas publicado no Git — o
+        Argo CD já observa os repositórios e sincroniza sozinho.
       required:
         - projectName
       properties:
@@ -53,12 +56,12 @@ spec:
           description: Descrição do propósito do projeto (opcional)
 
         deployHttpd:
-          title: Realizar o deploy do Httpd após criar o projeto
+          title: Incluir manifests do Httpd (GitOps)
           type: boolean
           description: >-
-            Se marcado, dispara automaticamente o template DeployHttpd
-            no novo projeto após a criação. Se desmarcado, apenas o
-            projeto é criado.
+            Se marcado, publica os manifests do Httpd em manifests/httpd/
+            no repositório. O Argo CD, que já lê os repositórios, sincroniza
+            o deploy. O AAP cria apenas o projeto/namespace.
           default: false
 
     - title: Repositório
@@ -78,29 +81,23 @@ spec:
 
   steps:
 
-    # Execução síncrona: a ação lança o job, faz polling do status a cada 5s
-    # (máximo 1h) e só termina quando o job termina. Ao final, registra no log
-    # da task as mensagens de ansible.builtin.debug do playbook.
-    # Se o job não terminar como "successful", este step falha.
-    # Se a task for cancelada no Developer Hub, o job é cancelado no AAP.
+    # Único step que usa AAP: cria o projeto/namespace no OpenShift.
     - id: launch-job-template
-      name: Criar projeto no OpenShift
+      name: Criar projeto no OpenShift (AAP)
       action: rhaap:launch-job-template
       input:
         token: ${{ environment.secrets.aapToken }}
         waitForCompletion: true
         values:
           # Job Template "CreateProject" do projeto "Ansible-Examples" no AAP
-          # (localizado pelo nome; também aceita o ID numérico, se preferir)
           template: CreateProject
-          # Variáveis esperadas pelo playbook CreateProject
           extraVariables: |-
             project_name: ${{ parameters.projectName }}
             project_display_name: ${{ parameters.displayName }}
             project_description: ${{ parameters.projectDescription }}
 
     - id: log-output
-      name: Registrar resultado da execução
+      name: Registrar resultado da execução AAP
       action: debug:log
       input:
         message: >-
@@ -109,10 +106,7 @@ spec:
           Status: ${{ steps['launch-job-template'].output.data.status }}.
           Output: ${{ steps['launch-job-template'].output.data.output }}
 
-    # Os 3 steps abaixo só executam se "launch-job-template" tiver sucesso
-    # (o Scaffolder interrompe a execução dos steps seguintes em caso de
-    # falha). Criam o conteúdo base do repositório, publicam no GitHub e
-    # registram o catalog-info.yaml resultante no Catalog do Backstage.
+    # Conteúdo base do repositório (catalog-info System + README).
     - id: fetch-skeleton
       name: Buscar arquivos base do repositório
       action: fetch:template
@@ -122,13 +116,26 @@ spec:
           projectName: ${{ parameters.projectName }}
           projectDescription: ${{ parameters.projectDescription }}
 
+    # Sobrescreve catalog-info e adiciona manifests/httpd quando o usuário
+    # pediu GitOps. O Argo CD detecta o repositório e sincroniza — o
+    # template não chama a API do Argo CD.
+    - id: fetch-httpd
+      name: Incluir manifests Httpd (GitOps)
+      if: ${{ parameters.deployHttpd }}
+      action: fetch:template
+      input:
+        url: ./skeleton-httpd
+        values:
+          projectName: ${{ parameters.projectName }}
+          projectDescription: ${{ parameters.projectDescription }}
+          k8sLabelSelector: app=httpd
+
     - id: publish-github
       name: Publicar repositório no GitHub
       action: publish:github
       input:
         description: >-
           ${{ parameters.projectDescription or ('Projeto OpenShift ' + parameters.projectName) }}
-        # Nome do repositório é sempre o nome do projeto (não é solicitado ao usuário)
         repoUrl: github.com?owner=${{ parameters.githubOwner }}&repo=${{ parameters.projectName }}
         defaultBranch: main
 
@@ -139,36 +146,16 @@ spec:
         repoContentsUrl: ${{ steps['publish-github'].output.repoContentsUrl }}
         catalogInfoPath: /catalog-info.yaml
 
-    # Só é executado se o usuário marcou "deployHttpd" E o step
-    # "launch-job-template" terminou com sucesso (o Scaffolder interrompe a
-    # execução dos steps seguintes em caso de falha).
-    # Dispara o template "DeployHttpd" como uma nova task independente,
-    # passando o nome do projeto recém-criado.
-    - id: trigger-deploy-httpd
-      name: Deploy DeployHttpd
-      if: ${{ parameters.deployHttpd }}
-      action: http:backstage:request
-      input:
-        method: POST
-        path: /scaffolder/v2/tasks
-        headers:
-          Content-Type: application/json
-        body:
-          templateRef: template:default/deploy-httpd-aap
-          values:
-            projectName: ${{ parameters.projectName }}
-            githubOwner: ${{ parameters.githubOwner }}
-            projectDescription: ${{ parameters.projectDescription }}
-
-    - id: log-trigger-deploy-httpd
-      name: Registrar disparo do DeployHttpd
+    - id: log-httpd-gitops
+      name: Registrar publicação GitOps
       if: ${{ parameters.deployHttpd }}
       action: debug:log
       input:
         message: >-
-          Template "DeployHttpd" disparado para o projeto
-          "${{ parameters.projectName }}".
-          Task ID: ${{ steps['trigger-deploy-httpd'].output.body.id }}.
+          Manifests Httpd publicados em
+          ${{ steps['publish-github'].output.remoteUrl }}
+          (path manifests/httpd). O Argo CD deve sincronizar a partir do
+          repositório — nenhuma Application foi criada por este template.
 
   output:
     links:
@@ -181,16 +168,13 @@ spec:
       - title: Abrir no Catalog
         icon: catalog
         entityRef: ${{ steps['register-catalog'].output.entityRef }}
-      - title: Ver task do DeployHttpd
-        url: >-
-          ${{ parameters.deployHttpd and ('/create/tasks/' + steps['trigger-deploy-httpd'].output.body.id) }}
-        icon: dashboard
     text:
       - title: Projeto Criado
         content: "${{ parameters.projectName }}"
-      - title: ID do Job
+      - title: ID do Job AAP
         content: "${{ steps['launch-job-template'].output.data.id }}"
-      - title: Status
+      - title: Status AAP
         content: "${{ steps['launch-job-template'].output.data.status }}"
-      - title: Task ID do DeployHttpd
-        content: "${{ parameters.deployHttpd and steps['trigger-deploy-httpd'].output.body.id }}"
+      - title: Manifests Httpd
+        content: >-
+          ${{ parameters.deployHttpd and 'manifests/httpd (Argo CD sincroniza do repo)' or 'não incluídos' }}

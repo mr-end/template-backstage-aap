@@ -2,10 +2,14 @@ apiVersion: backstage.io/v1alpha1
 kind: Location
 metadata:
   name: aap-templates
-  description: Templates Backstage para executar automações no AAP
+  description: >-
+    Templates Backstage: AAP (projeto OpenShift / Hello World) e
+    GitOps (manifests Httpd no repositório para o Argo CD sincronizar)
+
 spec:
   type: url
   targets:
     - ./template.yaml
     - ./create-openshift-project.yaml
     - ./deploy-httpd.yaml
+
