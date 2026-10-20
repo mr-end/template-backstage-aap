@@ -4,34 +4,29 @@ metadata:
   name: deploy-httpd-aap
   title: DeployHttpd
   description: >-
-    Gera os manifests do Httpd no repositório do projeto e registra a
-    Application no Argo CD (via API/proxy) para gerenciar o deploy
+    Gera os manifests do Httpd no repositório do projeto para o Argo CD
+    sincronizar sozinho (GitOps)
   tags:
     - argocd
     - gitops
     - httpd
     - openshift
-    - v0-5-0
+    - v0-5-1
   labels:
-    version: 0.5.0
+    version: 0.5.1
   annotations:
     backstage.io/techdocs-ref: dir:.
-  links:
-    - title: Argo CD
-      url: https://openshift-gitops-server-openshift-gitops.apps.cluster-bxnhf.dyn.redhatworkshops.io/
-      icon: dashboard
 spec:
   type: service
   owner: user:default/victorfim
   lifecycle: production
 
   parameters:
-    - title: Deploy do Httpd (Argo CD)
+    - title: Deploy do Httpd (GitOps)
       description: >
         Este template gera os manifests Kubernetes/OpenShift do Httpd no
-        repositório do projeto (path `manifests/httpd`) e registra uma
-        Application no Argo CD via proxy `/argocd/api` do RHDH (não depende
-        da action scaffolder `argocd:create-resources`).
+        repositório do projeto (path `manifests/httpd`). O Argo CD busca e
+        sincroniza sozinho — este template não registra Application no Argo CD.
       required:
         - projectName
         - githubOwner
@@ -57,14 +52,6 @@ spec:
           type: string
           description: Descrição do propósito do projeto (opcional)
 
-        argoProject:
-          title: Projeto do Argo CD
-          type: string
-          description: >-
-            AppProject do Argo CD onde a Application será criada
-            (em geral "default")
-          default: default
-
         k8sLabelSelector:
           title: Label Selector do Kubernetes (avançado)
           type: string
@@ -87,8 +74,8 @@ spec:
           projectDescription: ${{ parameters.projectDescription }}
           k8sLabelSelector: ${{ parameters.k8sLabelSelector or 'app=httpd' }}
 
-    # Publica via PR no repositório do projeto. Após o merge na branch
-    # principal, a Application no Argo CD sincroniza os manifests.
+    # Publica via PR. Após o merge, o Argo CD sincroniza os manifests
+    # a partir do repositório (sem registro via API neste template).
     # OBS: usa um nome de branch fixo. Se o template for executado mais de
     # uma vez para o mesmo projeto, pode ser necessário remover/mesclar o PR
     # anterior antes de rodar novamente.
@@ -97,12 +84,12 @@ spec:
       action: publish:github:pull-request
       input:
         repoUrl: github.com?owner=${{ parameters.githubOwner }}&repo=${{ parameters.projectName }}
-        branchName: deploy-httpd-argocd
-        title: "Adiciona deploy Httpd gerenciado pelo Argo CD"
+        branchName: deploy-httpd-gitops
+        title: "Adiciona manifests Httpd (GitOps)"
         description: >-
           Adiciona manifests em manifests/httpd/ e atualiza o
           catalog-info.yaml com o Component do Httpd. Após o merge,
-          a Application no Argo CD sincroniza o deploy no namespace
+          o Argo CD sincroniza o deploy no namespace
           ${{ parameters.projectName }}.
 
     - id: log-publish-httpd-pr
@@ -112,64 +99,17 @@ spec:
         message: >-
           Pull Request aberto no repositório
           "${{ parameters.githubOwner }}/${{ parameters.projectName }}":
-          ${{ steps['publish-httpd-pr'].output.remoteUrl }}
-
-    # Registra a Application via API do Argo CD (proxy do RHDH).
-    # Requer o endpoint proxy '/argocd/api' apontando para ${ARGO_URL}/api/v1/
-    # com autenticação (Cookie/token) configurada no app-config.
-    - id: create-argocd-app
-      name: Registrar Application no Argo CD
-      action: http:backstage:request
-      input:
-        method: POST
-        path: /proxy/argocd/api/applications?upsert=true
-        headers:
-          Content-Type: application/json
-        body:
-          metadata:
-            name: ${{ parameters.projectName }}-httpd
-            labels:
-              app.kubernetes.io/name: httpd
-              backstage.io/kubernetes-id: ${{ parameters.projectName }}-httpd
-          spec:
-            project: ${{ parameters.argoProject or 'default' }}
-            source:
-              repoURL: https://github.com/${{ parameters.githubOwner }}/${{ parameters.projectName }}.git
-              path: manifests/httpd
-              targetRevision: HEAD
-            destination:
-              server: https://kubernetes.default.svc
-              namespace: ${{ parameters.projectName }}
-            syncPolicy:
-              automated:
-                prune: true
-                selfHeal: true
-              syncOptions:
-                - CreateNamespace=false
-
-    - id: log-argocd
-      name: Registrar Application Argo CD
-      action: debug:log
-      input:
-        message: >-
-          Application Argo CD "${{ parameters.projectName }}-httpd" registrada
-          via API. Namespace destino: "${{ parameters.projectName }}".
-          Path: manifests/httpd.
-          Resposta: ${{ steps['create-argocd-app'].output.body | dump }}
+          ${{ steps['publish-httpd-pr'].output.remoteUrl }}.
+          Manifests em manifests/httpd — o Argo CD sincroniza a partir do
+          repositório (nenhum registro via API).
 
   output:
     links:
       - title: Ver Pull Request
         url: ${{ steps['publish-httpd-pr'].output.remoteUrl }}
         icon: github
-      - title: Abrir Application no Argo CD
-        url: >-
-          https://openshift-gitops-server-openshift-gitops.apps.cluster-bxnhf.dyn.redhatworkshops.io/applications/${{ parameters.projectName }}-httpd
-        icon: dashboard
     text:
       - title: Projeto
         content: "${{ parameters.projectName }}"
-      - title: Application Argo CD
-        content: "${{ parameters.projectName }}-httpd"
       - title: Path dos manifests
         content: manifests/httpd

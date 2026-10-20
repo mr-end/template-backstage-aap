@@ -11,9 +11,9 @@ metadata:
     - aap
     - automation
     - openshift
-    - v0-7-2
+    - v0-7-3
   labels:
-    version: 0.7.2
+    version: 0.7.3
   annotations:
     backstage.io/techdocs-ref: dir:.
   links:
@@ -31,8 +31,8 @@ spec:
         Este template executa o playbook **CreateProject** (projeto
         Ansible-Examples) no AAP para criar um novo projeto no OpenShift.
         A execução usa suas credenciais do AAP e aguarda o término do job.
-        Se marcado, dispara em seguida o template DeployHttpd (manifests +
-        registro da Application no Argo CD) como task separada.
+        Se marcado, dispara em seguida o template DeployHttpd (publica
+        manifests no Git para o Argo CD sincronizar) como task separada.
       required:
         - projectName
       properties:
@@ -60,7 +60,7 @@ spec:
           description: >-
             Se marcado, dispara o template DeployHttpd (task independente)
             após a criação do projeto e do repositório. O DeployHttpd gera
-            os manifests e registra a Application no Argo CD.
+            os manifests no Git; o Argo CD sincroniza sozinho.
           default: false
 
     - title: Repositório
@@ -131,8 +131,8 @@ spec:
         repoContentsUrl: ${{ steps['publish-github'].output.repoContentsUrl }}
         catalogInfoPath: /catalog-info.yaml
 
-    # Dispara o template DeployHttpd como task independente. Lá ficam a
-    # geração dos manifests e o registro da Application no Argo CD.
+    # Dispara o template DeployHttpd como task independente (só publica
+    # manifests no Git; o Argo CD sincroniza sozinho).
     - id: trigger-deploy-httpd
       name: Disparar DeployHttpd
       if: ${{ parameters.deployHttpd }}
@@ -148,7 +148,6 @@ spec:
             projectName: ${{ parameters.projectName }}
             githubOwner: ${{ parameters.githubOwner }}
             projectDescription: ${{ parameters.projectDescription }}
-            argoProject: default
             k8sLabelSelector: app=httpd
 
     - id: log-trigger-deploy-httpd

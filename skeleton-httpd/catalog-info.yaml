@@ -25,7 +25,7 @@ metadata:
     backstage.io/kubernetes-namespace: ${{ values.projectName }}
     backstage.io/kubernetes-cluster: aro-lab
     backstage.io/kubernetes-label-selector: ${{ values.k8sLabelSelector }}
-    # Plugin Argo CD do RHDH: Application registrada pelo template
+    # Plugin Argo CD do RHDH (se a Application existir no cluster)
     argocd/app-name: ${{ values.projectName }}-httpd
 
 
