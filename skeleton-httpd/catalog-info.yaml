@@ -25,8 +25,9 @@ metadata:
     backstage.io/kubernetes-namespace: ${{ values.projectName }}
     backstage.io/kubernetes-cluster: aro-lab
     backstage.io/kubernetes-label-selector: ${{ values.k8sLabelSelector }}
-    # Plugin Argo CD do RHDH: nome da Application que observa este repo
+    # Plugin Argo CD do RHDH: Application registrada pelo template
     argocd/app-name: ${{ values.projectName }}-httpd
+
 
 spec:
   type: service

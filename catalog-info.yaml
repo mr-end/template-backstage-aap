@@ -4,7 +4,8 @@ metadata:
   name: aap-templates
   description: >-
     Templates Backstage: AAP (projeto OpenShift / Hello World) e
-    GitOps (manifests Httpd no repositório para o Argo CD sincronizar)
+    Argo CD (manifests Httpd + registro da Application)
+
 
 spec:
   type: url
