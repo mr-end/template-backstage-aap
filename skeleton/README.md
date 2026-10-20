@@ -6,8 +6,8 @@ Projeto OpenShift criado automaticamente via Backstage Software Template.
 
 - **Namespace:** criado pelo Job Template **CreateProject** no Ansible
   Automation Platform (AAP).
-- **Httpd (opcional):** manifests em `manifests/httpd/`; a Application
-  no Argo CD é registrada pelo template (GitOps) — não pelo AAP.
+- **Deploy de aplicações:** use o template **DeployHttpd**, que publica
+  manifests e registra a Application no Argo CD.
 
 ## Projeto no OpenShift
 
