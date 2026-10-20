@@ -5,15 +5,15 @@ metadata:
   title: Create Openshift Project
   description: >-
     Cria um novo projeto no OpenShift via AAP (CreateProject), publica o
-    repositório no GitHub e registra no Catalog do Backstage
+    repositório no GitHub e, opcionalmente, dispara o template DeployHttpd
   tags:
     - ansible
     - aap
     - automation
     - openshift
-    - v0-7-0
+    - v0-7-1
   labels:
-    version: 0.7.0
+    version: 0.7.1
   annotations:
     backstage.io/techdocs-ref: dir:.
   links:
@@ -31,8 +31,8 @@ spec:
         Este template executa o playbook **CreateProject** (projeto
         Ansible-Examples) no AAP para criar um novo projeto no OpenShift.
         A execução usa suas credenciais do AAP e aguarda o término do job.
-        O deploy de aplicações (ex.: Httpd) é feito via Argo CD, no template
-        DeployHttpd — não por este template.
+        Se marcado, dispara em seguida o template DeployHttpd (manifests +
+        registro da Application no Argo CD) como task separada.
       required:
         - projectName
       properties:
@@ -53,6 +53,24 @@ spec:
           title: Descrição do Projeto
           type: string
           description: Descrição do propósito do projeto (opcional)
+
+        deployHttpd:
+          title: Disparar DeployHttpd após criar o projeto
+          type: boolean
+          description: >-
+            Se marcado, dispara o template DeployHttpd (task independente)
+            após a criação do projeto e do repositório. O DeployHttpd gera
+            os manifests e registra a Application no Argo CD.
+          default: false
+
+        argoInstance:
+          title: Instância do Argo CD
+          type: string
+          description: >-
+            Nome da instância em argocd.appLocatorMethods no app-config do
+            RHDH. Passado ao DeployHttpd quando o disparo estiver marcado
+            (defaults do schema não são aplicados via API).
+          default: default
 
     - title: Repositório
       description: >
@@ -122,6 +140,36 @@ spec:
         repoContentsUrl: ${{ steps['publish-github'].output.repoContentsUrl }}
         catalogInfoPath: /catalog-info.yaml
 
+    # Dispara o template DeployHttpd como task independente. Lá ficam a
+    # geração dos manifests e o registro da Application no Argo CD.
+    - id: trigger-deploy-httpd
+      name: Disparar DeployHttpd
+      if: ${{ parameters.deployHttpd }}
+      action: http:backstage:request
+      input:
+        method: POST
+        path: /scaffolder/v2/tasks
+        headers:
+          Content-Type: application/json
+        body:
+          templateRef: template:default/deploy-httpd-aap
+          values:
+            projectName: ${{ parameters.projectName }}
+            githubOwner: ${{ parameters.githubOwner }}
+            projectDescription: ${{ parameters.projectDescription }}
+            argoInstance: ${{ parameters.argoInstance or 'default' }}
+            k8sLabelSelector: app=httpd
+
+    - id: log-trigger-deploy-httpd
+      name: Registrar disparo do DeployHttpd
+      if: ${{ parameters.deployHttpd }}
+      action: debug:log
+      input:
+        message: >-
+          Template "DeployHttpd" disparado para o projeto
+          "${{ parameters.projectName }}".
+          Task ID: ${{ steps['trigger-deploy-httpd'].output.body.id }}.
+
   output:
     links:
       - title: Ver execução no AAP
@@ -133,6 +181,10 @@ spec:
       - title: Abrir no Catalog
         icon: catalog
         entityRef: ${{ steps['register-catalog'].output.entityRef }}
+      - title: Ver task do DeployHttpd
+        url: >-
+          ${{ parameters.deployHttpd and ('/create/tasks/' + steps['trigger-deploy-httpd'].output.body.id) }}
+        icon: dashboard
     text:
       - title: Projeto Criado
         content: "${{ parameters.projectName }}"
@@ -140,3 +192,5 @@ spec:
         content: "${{ steps['launch-job-template'].output.data.id }}"
       - title: Status AAP
         content: "${{ steps['launch-job-template'].output.data.status }}"
+      - title: Task ID do DeployHttpd
+        content: "${{ parameters.deployHttpd and steps['trigger-deploy-httpd'].output.body.id }}"
