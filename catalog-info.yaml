@@ -3,10 +3,8 @@ kind: Location
 metadata:
   name: aap-templates
   description: >-
-    Templates Backstage: AAP (projeto OpenShift / Hello World) e
+    Templates Backstage: AAP (projeto OpenShift / Hello World / Timer) e
     DeployHttpd (manifests GitOps para o Argo CD sincronizar)
-
-
 
 spec:
   type: url
@@ -14,4 +12,5 @@ spec:
     - ./template.yaml
     - ./create-openshift-project.yaml
     - ./deploy-httpd.yaml
+    - ./timer.yaml
 

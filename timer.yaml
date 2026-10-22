@@ -1,0 +1,67 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: timer-aap
+  title: Timer
+  description: >-
+    Executa o playbook Timer no Ansible Automation Platform e exibe os
+    logs do job ao final
+  tags:
+    - ansible
+    - aap
+    - automation
+    - timer
+    - v0-1-0
+  labels:
+    version: 0.1.0
+  annotations:
+    backstage.io/techdocs-ref: dir:.
+  links:
+    - title: Ansible Automation Platform
+      url: https://aap-hub-aap.apps.cluster-bxnhf.dyn.redhatworkshops.io/
+      icon: dashboard
+spec:
+  type: automation
+  owner: user:default/victorfim
+  lifecycle: production
+
+  parameters:
+    - title: Executar Timer no AAP
+      description: >
+        Este template executa o Job Template **Timer** no AAP, aguarda o
+        término do job e em seguida imprime o resultado nos logs da task.
+      properties: {}
+
+  steps:
+
+    - id: launch-job-template
+      name: Executar Job Template Timer
+      action: rhaap:launch-job-template
+      input:
+        token: ${{ environment.secrets.aapToken }}
+        waitForCompletion: true
+        values:
+          template: Timer
+
+    - id: print-logs
+      name: Exibir logs do job
+      action: debug:log
+      input:
+        message: |
+          Job Template "Timer" finalizado.
+          Job ID: ${{ steps['launch-job-template'].output.data.id }}
+          Status: ${{ steps['launch-job-template'].output.data.status }}
+          URL: ${{ steps['launch-job-template'].output.data.url }}
+          Output:
+          ${{ steps['launch-job-template'].output.data.output }}
+
+  output:
+    links:
+      - title: Ver execução no AAP
+        url: ${{ steps['launch-job-template'].output.data.url }}
+        icon: dashboard
+    text:
+      - title: ID do Job
+        content: "${{ steps['launch-job-template'].output.data.id }}"
+      - title: Status
+        content: "${{ steps['launch-job-template'].output.data.status }}"
